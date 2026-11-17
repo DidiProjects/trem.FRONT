@@ -1,3 +1,5 @@
+import { env } from '@/config/env'
+
 export interface FieldErrors {
   [field: string]: string
 }
@@ -60,11 +62,13 @@ export async function send(path: string, options: RequestOptions = {}): Promise<
   const headers: Record<string, string> = { Accept: 'application/json', ...options.headers }
   if (options.body !== undefined) headers['Content-Type'] = 'application/json'
   try {
-    return await fetch(path, {
+    return await fetch(`${env.apiUrl}${path}`, {
       method: options.method ?? 'GET',
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
-      credentials: 'same-origin',
+      // trem.API is on another domain: without it the session cookie is neither stored
+      // from the login response nor sent on /auth/refresh.
+      credentials: 'include',
     })
   } catch {
     throw new ApiError(NETWORK_ERROR, 0)
