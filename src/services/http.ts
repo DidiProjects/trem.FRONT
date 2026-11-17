@@ -53,19 +53,21 @@ export async function toApiError(res: Response): Promise<ApiError> {
 }
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  /** JSON, or FormData for uploads (the browser sets the multipart boundary). */
   body?: unknown
   headers?: Record<string, string>
 }
 
 export async function send(path: string, options: RequestOptions = {}): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json', ...options.headers }
-  if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+  const form = options.body instanceof FormData
+  if (options.body !== undefined && !form) headers['Content-Type'] = 'application/json'
   try {
     return await fetch(`${env.apiUrl}${path}`, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: options.body === undefined ? undefined : form ? (options.body as FormData) : JSON.stringify(options.body),
       // trem.API is on another domain: without it the session cookie is neither stored
       // from the login response nor sent on /auth/refresh.
       credentials: 'include',

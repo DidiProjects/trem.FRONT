@@ -1,15 +1,15 @@
 # trem.FRONT
 
 Login page and catalog of the self-hosted services (Immich, Radarr, Sonarr, Prowlarr,
-qBittorrent). Accounts, passwords and the second factor come from
-[trem.API](https://github.com/DidiProjects/trem.API).
+qBittorrent...), with an admin area to manage them. Accounts, passwords, the second factor
+and the catalog itself come from [trem.API](https://github.com/DidiProjects/trem.API).
 
 React 19 · TypeScript · Vite 8 · MUI 9 · React Router 7 · Zod 4 · Vitest.
 
 ## Running
 
 ```bash
-cp .env.example .env          # VITE_SERVICES_HOST = the server's Tailscale IP
+cp .env.example .env          # optional: VITE_API_URL
 npm install
 npm start                     # http://localhost:3004
 ```
@@ -57,23 +57,25 @@ npm run build
 
 ## Catalog
 
-`src/constants/services.ts` lists the services and their ports; the address is
-`http://<VITE_SERVICES_HOST>:<port>`. Each service appears only for accounts holding the
-permission `hub:<id>` in trem.API. Logos: [dashboard-icons](https://github.com/homarr-labs/dashboard-icons)
-(Apache-2.0), in `src/assets/logos`.
+The services live in trem.API (`/hub/services`): name, description, address, logo and
+order. The catalog shows what trem.API returns for the account: enabled services with an
+address, granted with the permission `hub:<service>`.
 
-To add a service: an entry in `SERVICES`, its logo, and the permission in trem.API.
+### Administration (`/admin/services`)
 
-### Permissions in trem.API (once, with an admin login)
+For accounts holding `trem:admin`, from the account menu ("Serviços do catálogo"). trem.API
+also requires the login to have used the second factor (TOTP); without it the page says so.
 
-With the Postman collection of trem.API (Admin folders):
+- Create, edit, hide, reorder and remove services. The identifier becomes the permission
+  `hub:<identifier>` and cannot change; removing a service removes the permission and every
+  grant of it.
+- Logo: PNG, WebP or SVG up to 256 KB, sent to trem.API and served from there.
+- "Acesso": one switch per active account. The change does not end the account's session;
+  it shows the next time the catalog opens.
 
-1. `POST /admin/applications` `{"slug": "hub", "name": "trem.FRONT"}`
-2. `POST /admin/applications/hub/permissions` once per service: `{"name": "immich"}`,
-   `radarr`, `sonarr`, `prowlarr`, `qbittorrent`
-3. `PUT /admin/users/{id}/permissions` with the full set of the account, e.g.
-   `{"permissions": ["trem:ai", "hub:immich", "hub:radarr"]}` (it replaces the set: keep
-   the ones the account already has). Sign-ups get them on `POST /admin/users/{id}/approve`.
+The five initial services come from trem.API's migration 010 with their logos
+([dashboard-icons](https://github.com/homarr-labs/dashboard-icons), Apache-2.0) and no
+address: fill it in the admin area for each to appear.
 
 ## Deploy (Netlify)
 
@@ -85,9 +87,7 @@ Repository configuration:
 
 | Kind | Name | Value |
 |---|---|---|
-| variable | `SERVICES_HOST` | the server's Tailscale IP |
 | variable | `TREM_API_URL` | trem.API's origin, `https://api.didilv93.com` |
-| variable | `SERVICES_PROTOCOL` | optional, `http` (default) or `https` |
 | secret | `NETLIFY_AUTH_TOKEN` | Netlify personal access token |
 | secret | `NETLIFY_SITE_ID` | the site's ID |
 
