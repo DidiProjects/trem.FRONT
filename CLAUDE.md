@@ -1,6 +1,7 @@
 # trem.FRONT
 
-React + Vite + MUI 9. Login (trem.API) e catálogo dos serviços do servidor. Dev server na
+React + Vite + MUI 9. Login (trem.API), catálogo dos serviços do servidor e a administração
+dele; o catálogo vem da trem.API (`/hub/services`, `/admin/hub/services`). Dev server na
 3004; o front chama a trem.API direto em `VITE_API_URL` (outro domínio, com CORS).
 
 Regras gerais (autonomia, commits, testes, comentários) vivem em `~/.claude/`. Aqui só o
@@ -29,7 +30,12 @@ que é armadilha **deste** repositório.
 - **A 1Password do Chrome intercepta digitação** nos campos de login durante testes com a
   extensão do Chrome: usar `form_input` em vez de `type`.
 
+- **Dados da API num componente: `useLoad`** (`src/hooks/useLoad.ts`). Ele só faz setState
+  no `.then`, o que a regra do React Compiler aceita; não chamar setState síncrono em effect.
+
 ## Testes
 
 `npm run test:run` (Vitest + Testing Library, renderizando com StrictMode). A API é
-simulada por `src/test/fakeApi.ts`. `npm run build` roda `tsc -b` antes do bundle.
+simulada por `src/test/fakeApi.ts`, que já responde `GET /hub/services` com `CATALOG`.
+Timeout de 15 s: o user-event digita tecla a tecla, e os formulários longos passam de 5 s
+com os arquivos rodando em paralelo. `npm run build` roda `tsc -b` antes do bundle.

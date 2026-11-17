@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { catalogFor } from '@/constants/services'
 import { captureEmailLink, clearEmailToken, peekEmailToken } from './emailLinks'
-import { newPasswordSchema, passwordIssue, registerSchema, validate } from './validation'
+import { logoIssue, newPasswordSchema, passwordIssue, registerSchema, serviceSchema, validate } from './validation'
 
 const TOKEN = 'a'.repeat(43)
 
@@ -59,13 +58,35 @@ describe('e-mail links', () => {
   })
 })
 
-describe('catalog', () => {
-  it('lists only the services granted with hub:<id>', () => {
-    const services = catalogFor(['hub:radarr', 'trem:admin', 'hub:unknown'], '100.64.0.1', 'http')
-    expect(services.map((s) => [s.id, s.url])).toEqual([['radarr', 'http://100.64.0.1:7878']])
+describe('catalog service form (mirrors trem.API)', () => {
+  const valid = { slug: 'immich', name: 'Immich', description: '', url: 'http://100.64.0.1:2283' }
+
+  it('accepts an http(s) address or none', () => {
+    expect(validate(serviceSchema, valid)).toBeNull()
+    expect(validate(serviceSchema, { ...valid, url: '' })).toBeNull()
+    expect(validate(serviceSchema, { ...valid, url: 'https://fotos.example.com/app' })).toBeNull()
   })
 
-  it('has no address without a host', () => {
-    expect(catalogFor(['hub:sonarr'], '', 'http')[0].url).toBe('')
+  it.each([
+    ['ftp://host', 'Use um endereço http:// ou https://'],
+    ['javascript:alert(1)', 'Use um endereço http:// ou https://'],
+    ['http://u:p@host', 'O endereço não pode levar usuário ou senha'],
+    ['100.64.0.1:2283', 'Endereço inválido. Ex.: http://100.64.0.1:2283'],
+    ['nada', 'Endereço inválido. Ex.: http://100.64.0.1:2283'],
+  ])('refuses the address %s', (url, message) => {
+    expect(validate(serviceSchema, { ...valid, url })?.url).toBe(message)
+  })
+
+  it('takes the identifier the permission hub:<slug> accepts', () => {
+    expect(validate(serviceSchema, { ...valid, slug: 'Immich' })?.slug).toMatch(/minúsculas/)
+    expect(validate(serviceSchema, { ...valid, slug: '-x' })?.slug).toMatch(/minúsculas/)
+    expect(validate(serviceSchema, { ...valid, slug: 'q.bit_torrent-2' })).toBeNull()
+  })
+
+  it('takes PNG, WebP or SVG logos up to 256 KB', () => {
+    const file = (type: string, size = 10) => new File([new Uint8Array(size)], 'logo', { type })
+    expect(logoIssue(file('image/svg+xml'))).toBeNull()
+    expect(logoIssue(file('image/gif'))).toBe('Use uma imagem PNG, WebP ou SVG')
+    expect(logoIssue(file('image/png', 256 * 1024 + 1))).toBe('A imagem passa de 256 KB')
   })
 })
