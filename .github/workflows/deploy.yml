@@ -1,0 +1,41 @@
+name: Deploy to Netlify
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Test, build and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:run
+
+      - name: Build
+        env:
+          VITE_SERVICES_HOST: ${{ vars.SERVICES_HOST }}
+          VITE_SERVICES_PROTOCOL: ${{ vars.SERVICES_PROTOCOL }}
+        run: |
+          test -n "$VITE_SERVICES_HOST" || { echo "Repository variable SERVICES_HOST is not set"; exit 1; }
+          npm run build
+
+      - name: Proxy the API through Netlify
+        env:
+          TREM_API_URL: ${{ vars.TREM_API_URL }}
+        run: npm run redirects
+
+      - name: Deploy
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: npx --yes netlify-cli deploy --dir=./dist --prod
