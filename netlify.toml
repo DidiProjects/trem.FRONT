@@ -1,0 +1,5 @@
+# The redirects (API proxy and SPA fallback) are written to dist/_redirects at build
+# time from TREM_API_URL: see scripts/write-redirects.mjs.
+[build]
+  publish = "dist"
+  ignore = "exit 0"
