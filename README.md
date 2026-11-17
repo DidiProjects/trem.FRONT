@@ -14,8 +14,9 @@ npm install
 npm start                     # http://localhost:3004
 ```
 
-The dev server forwards `/auth` and `/me` to trem.API (`API_PROXY_TARGET`, default
-`http://127.0.0.1:3002`). To use the production API: `API_PROXY_TARGET=https://api.didilv93.com npm start`.
+The front calls trem.API directly at `VITE_API_URL` (default `http://localhost:3002`).
+trem.API must list the front's origin in `CORS_ORIGINS` (`http://localhost:3004` in
+development).
 
 ```bash
 npm run lint
@@ -34,8 +35,9 @@ npm run build
 | Route guards | `src/routes/guards.tsx` |
 
 - Login asks trem.API for `session: "cookie"`: the refresh token lives in an HttpOnly
-  cookie (SameSite=Strict, path `/auth`), out of reach of JavaScript. The access token
-  (15 min) stays in memory only.
+  cookie (path `/auth`), out of reach of JavaScript. trem.API is on another domain, so the
+  cookie is `SameSite=None; Partitioned` (CHIPS) and every call goes with
+  `credentials: "include"`. The access token (15 min) stays in memory only.
 - The session survives reloads: a flag without any secret in `localStorage` says a
   restore is worth trying; the page then calls `POST /auth/refresh` once.
 - The access token is renewed a minute before it expires, when a tab comes back from the
@@ -75,22 +77,19 @@ With the Postman collection of trem.API (Admin folders):
 
 ## Deploy (Netlify)
 
-`.github/workflows/deploy.yml` runs on every push to `main`: lint, tests, build, then
-`scripts/write-redirects.mjs` writes `dist/_redirects`, which proxies `/auth/*` and `/me`
-to trem.API. Front and API share an origin as far as the browser knows, so the session
-cookie works on any Netlify domain and trem.API needs no CORS.
+`.github/workflows/deploy.yml` runs on every push to `main`: lint, tests, build (with
+`VITE_API_URL` from `TREM_API_URL`), deploy. `netlify.toml` only serves `index.html` for the
+client-side routes; the API is not proxied.
 
 Repository configuration:
 
 | Kind | Name | Value |
 |---|---|---|
 | variable | `SERVICES_HOST` | the server's Tailscale IP |
-| variable | `TREM_API_URL` | `https://api.didilv93.com` |
+| variable | `TREM_API_URL` | trem.API's origin, `https://api.didilv93.com` |
 | variable | `SERVICES_PROTOCOL` | optional, `http` (default) or `https` |
 | secret | `NETLIFY_AUTH_TOKEN` | Netlify personal access token |
 | secret | `NETLIFY_SITE_ID` | the site's ID |
 
-In trem.API: the variable `FRONTEND_URL` = this site's URL, so the e-mail links open here.
-
-Trade-off of the proxy: trem.API sees Netlify's address, so its per-IP limits (sign-up,
-forgot password) are shared by everyone using this site. Per-account limits are not.
+In trem.API: `FRONTEND_URL` = this site's URL, so the e-mail links open here, and this
+site's origin in `CORS_ORIGINS`.
