@@ -35,4 +35,6 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        run: npx --yes netlify-cli deploy --dir=./dist --prod
+        # --no-build: netlify-cli builds by default, again and without the VITE_* variables,
+        # overwriting the dist/ built and tested above (the site shipped localhost:3002).
+        run: npx --yes netlify-cli deploy --dir=./dist --prod --no-build
