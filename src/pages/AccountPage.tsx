@@ -1,7 +1,8 @@
 import { Link as RouterLink } from 'react-router'
 import { Box, Button, Card, CardContent, Chip, Divider, Stack, Typography } from '@mui/material'
-import { SERVICES, permissionFor } from '@/constants/services'
 import { useAuth } from '@/hooks/useAuth'
+import { useLoad } from '@/hooks/useLoad'
+import { hubApi } from '@/services/hubApi'
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -16,8 +17,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 export function AccountPage() {
   const { user } = useAuth()
+  const { result } = useLoad(hubApi.catalog)
   if (!user) return null
-  const granted = SERVICES.filter((s) => user.permissions.includes(permissionFor(s.id)))
+  const granted = result.state === 'ready' ? result.data : []
 
   return (
     <Stack spacing={3} sx={{ maxWidth: 720 }}>
@@ -36,11 +38,11 @@ export function AccountPage() {
             {granted.length ? (
               <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                 {granted.map((s) => (
-                  <Chip key={s.id} label={s.name} size="small" />
+                  <Chip key={s.slug} label={s.name} size="small" />
                 ))}
               </Stack>
             ) : (
-              <Typography color="text.secondary">Nenhum</Typography>
+              <Typography color="text.secondary">{result.state === 'loading' ? '…' : 'Nenhum'}</Typography>
             )}
           </Row>
           <Divider />

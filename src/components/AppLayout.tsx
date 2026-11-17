@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Link as RouterLink, Outlet, useNavigate } from 'react-router'
 import { AppBar, Avatar, Box, Container, Divider, IconButton, ListItemIcon, Menu, MenuItem, Toolbar, Tooltip, Typography } from '@mui/material'
 import Logout from '@mui/icons-material/Logout'
+import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined'
 import ManageAccounts from '@mui/icons-material/ManageAccounts'
 import { useAuth } from '@/hooks/useAuth'
+import { isAdmin } from '@/utils/roles'
 import { Brand } from './Brand'
 import { ThemeToggle } from './ThemeToggle'
 
@@ -59,6 +61,14 @@ export function AppLayout() {
               </ListItemIcon>
               Minha conta
             </MenuItem>
+            {isAdmin(user?.permissions) && (
+              <MenuItem onClick={() => go('/admin/services')}>
+                <ListItemIcon>
+                  <AdminPanelSettingsOutlined fontSize="small" />
+                </ListItemIcon>
+                Serviços do catálogo
+              </MenuItem>
+            )}
             <MenuItem
               onClick={() => {
                 setAnchor(null)

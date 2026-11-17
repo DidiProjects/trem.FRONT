@@ -89,6 +89,48 @@ export function newPasswordSchema(options: { username?: string; email?: string; 
     })
 }
 
+// Mirror trem.API's hub service rules (app/domain/schemas/hub.py).
+const SERVICE_SLUG = /^[a-z0-9][a-z0-9_.-]{0,49}$/
+export const LOGO_MAX_BYTES = 256 * 1024
+export const LOGO_TYPES = ['image/png', 'image/webp', 'image/svg+xml']
+
+function addressIssue(value: string): string | null {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return 'Use um endereço http:// ou https://'
+    if (url.username || url.password) return 'O endereço não pode levar usuário ou senha'
+    if (/\s/.test(value)) return 'O endereço não pode ter espaços'
+    return null
+  } catch {
+    return 'Endereço inválido. Ex.: http://100.64.0.1:2283'
+  }
+}
+
+export const serviceSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(1, 'Informe o identificador')
+    .regex(SERVICE_SLUG, 'Só letras minúsculas, números, ".", "_" e "-", começando por letra ou número'),
+  name: z.string().trim().min(1, 'Informe o nome').max(100, 'Até 100 caracteres'),
+  description: z.string().trim().max(500, 'Até 500 caracteres'),
+  url: z
+    .string()
+    .trim()
+    .max(500, 'Até 500 caracteres')
+    .superRefine((value, ctx) => {
+      const issue = addressIssue(value)
+      if (issue) ctx.addIssue({ code: 'custom', message: issue })
+    }),
+})
+
+export function logoIssue(file: File): string | null {
+  if (!LOGO_TYPES.includes(file.type)) return 'Use uma imagem PNG, WebP ou SVG'
+  if (file.size > LOGO_MAX_BYTES) return `A imagem passa de ${LOGO_MAX_BYTES / 1024} KB`
+  return null
+}
+
 export type Errors = Record<string, string | undefined>
 
 /** First message per field, or null when valid. */

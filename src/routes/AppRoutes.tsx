@@ -8,7 +8,8 @@ import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { VerifyEmailPage } from '@/pages/VerifyEmailPage'
-import { AnonymousOnly, RequireAuth, RequireSession } from './guards'
+import { AdminServicesPage } from '@/pages/admin/AdminServicesPage'
+import { AnonymousOnly, RequireAdmin, RequireAuth, RequireSession } from './guards'
 
 export function AppRoutes() {
   return (
@@ -31,6 +32,9 @@ export function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route index element={<CatalogPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route element={<RequireAdmin />}>
+            <Route path="/admin/services" element={<AdminServicesPage />} />
+          </Route>
         </Route>
       </Route>
 

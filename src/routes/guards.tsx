@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { FullPageError, FullPageSpinner } from '@/components/FullPageStatus'
 import { useAuth } from '@/hooks/useAuth'
+import { isAdmin } from '@/utils/roles'
 
 function Pending() {
   const { status, retry } = useAuth()
@@ -17,6 +18,13 @@ export function RequireAuth() {
   if (status === 'loading' || status === 'unavailable') return <Pending />
   if (status === 'anonymous') return <Navigate to="/login" replace state={{ from: location.pathname }} />
   if (status === 'must-change-password') return <Navigate to="/change-password" replace />
+  return <Outlet />
+}
+
+/** Accounts holding trem:admin; trem.API still checks it, with the second factor. */
+export function RequireAdmin() {
+  const { user } = useAuth()
+  if (!isAdmin(user?.permissions)) return <Navigate to="/" replace />
   return <Outlet />
 }
 
