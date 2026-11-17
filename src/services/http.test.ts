@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError, NETWORK_ERROR, request, toApiError } from './http'
 import { json } from '@/test/fakeApi'
+import { env } from '@/config/env'
 
 describe('toApiError', () => {
   it('maps a validation list to fields, without the pydantic prefix', async () => {
@@ -41,6 +42,7 @@ describe('request', () => {
     const [, init] = fetchMock.mock.calls[0]
     expect(init.headers['Content-Type']).toBe('application/json')
     expect(init.body).toBe('{"a":1}')
-    expect(init.credentials).toBe('same-origin')
+    expect(fetchMock.mock.calls[0][0]).toBe(`${env.apiUrl}/x`)
+    expect(init.credentials).toBe('include')
   })
 })

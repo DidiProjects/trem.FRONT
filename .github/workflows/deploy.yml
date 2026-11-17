@@ -23,16 +23,13 @@ jobs:
 
       - name: Build
         env:
+          VITE_API_URL: ${{ vars.TREM_API_URL }}
           VITE_SERVICES_HOST: ${{ vars.SERVICES_HOST }}
           VITE_SERVICES_PROTOCOL: ${{ vars.SERVICES_PROTOCOL }}
         run: |
+          [[ "$VITE_API_URL" == https://* ]] || { echo "Repository variable TREM_API_URL must be trem.API's https origin"; exit 1; }
           test -n "$VITE_SERVICES_HOST" || { echo "Repository variable SERVICES_HOST is not set"; exit 1; }
           npm run build
-
-      - name: Proxy the API through Netlify
-        env:
-          TREM_API_URL: ${{ vars.TREM_API_URL }}
-        run: npm run redirects
 
       - name: Deploy
         env:

@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { env } from '@/config/env'
 
 export interface Call {
   method: string
@@ -24,7 +25,9 @@ export function fakeToken(username = 'ana', minutes = 15): string {
 export function fakeApi(routes: Record<string, Handler>) {
   const calls: Call[] = []
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
-    const path = typeof input === 'string' ? input : input.toString()
+    const url = typeof input === 'string' ? input : input.toString()
+    if (!url.startsWith(`${env.apiUrl}/`)) throw new TypeError(`fetch outside trem.API: ${url}`)
+    const path = url.slice(env.apiUrl.length)
     const method = (init.method ?? 'GET').toUpperCase()
     const headers = Object.fromEntries(new Headers(init.headers).entries())
     const body = typeof init.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : undefined

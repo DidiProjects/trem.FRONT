@@ -13,8 +13,7 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "test": "vitest",
-    "test:run": "vitest run",
-    "redirects": "node scripts/write-redirects.mjs"
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

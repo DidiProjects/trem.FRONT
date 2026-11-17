@@ -1,6 +1,7 @@
 /**
  * The login session: the access token lives only in memory, the refresh token in the
- * HttpOnly cookie trem.API sets on /auth (unreachable from JavaScript).
+ * HttpOnly cookie trem.API sets on /auth (unreachable from JavaScript). trem.API is on
+ * another domain; the cookie is partitioned to this site (SameSite=None; Partitioned).
  *
  * - One refresh at a time per tab (single flight) and across tabs (Web Locks). The API
  *   rotates the refresh token and treats a reused one as theft: two tabs presenting the
