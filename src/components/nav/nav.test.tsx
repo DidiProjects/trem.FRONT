@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '@/App'
+import { env } from '@/config/env'
 import { session } from '@/services/session'
 import { CATALOG, ME, fakeApi, fakeToken, json } from '@/test/fakeApi'
 
@@ -33,6 +34,18 @@ describe('navigation', () => {
     expect(radarr).toHaveAttribute('href', CATALOG[0].url)
     expect(radarr).toHaveAttribute('target', '_blank')
     expect(radarr).toHaveAccessibleName('Radarr (abre em nova aba)')
+  })
+
+  it('shows each service with the logo from the catalog, or its initial', async () => {
+    fakeApi(loggedIn())
+    openAt('/')
+
+    const nav = await screen.findByRole('navigation', { name: 'Navegação principal' })
+    const radarr = await within(nav).findByRole('link', { name: /Radarr/ })
+    expect(radarr.querySelector('img')).toHaveAttribute('src', `${env.apiUrl}${CATALOG[0].logo_url}`)
+    const immich = within(nav).getByRole('link', { name: /Immich/ })
+    expect(immich.querySelector('img')).toBeNull()
+    expect(immich).toHaveTextContent(/^I/)
   })
 
   it('offers a skip link to the content', async () => {

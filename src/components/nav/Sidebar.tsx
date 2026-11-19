@@ -4,8 +4,10 @@ import { Box, ButtonBase, Link, List, ListItemButton, ListItemIcon, ListItemText
 import OpenInNew from '@mui/icons-material/OpenInNew'
 import SearchOutlined from '@mui/icons-material/SearchOutlined'
 import { Brand } from '@/components/Brand'
+import { ServiceLogo } from '@/components/ServiceLogo'
 import { useCatalog } from '@/contexts/catalogContext'
 import { useAuth } from '@/hooks/useAuth'
+import { logoSrc } from '@/services/hubApi'
 import { groupVars } from '@/products/groupVars'
 import { groupsFor, toolsOf } from '@/products/registry'
 import { visuallyHidden } from '@/utils/a11y'
@@ -153,10 +155,8 @@ export function Sidebar({ onNavigate, onSearch }: Props) {
                 rel="noopener noreferrer"
                 sx={{ ...itemSx, color: 'text.primary' }}
               >
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  <Box aria-hidden sx={{ width: 24, height: 24, borderRadius: '50%', bgcolor: 'text.primary', color: 'background.default', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 800 }}>
-                    {service.name.charAt(0).toUpperCase()}
-                  </Box>
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <ServiceLogo name={service.name} src={logoSrc(service.logo_url)} size={28} radius="8px" />
                 </ListItemIcon>
                 <ListItemText primary={service.name} />
                 <OpenInNew sx={{ fontSize: 16, color: 'text.secondary' }} aria-hidden />
