@@ -1,8 +1,10 @@
 import type { SvgIconComponent } from '@mui/icons-material'
 import HomeOutlined from '@mui/icons-material/HomeOutlined'
 import AppsOutlined from '@mui/icons-material/AppsOutlined'
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import ManageAccountsOutlined from '@mui/icons-material/ManageAccountsOutlined'
 import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined'
+import { FILE_EDITOR } from '@/products/registry'
 import { isAdmin } from '@/utils/roles'
 
 export interface PageLink {
@@ -19,7 +21,10 @@ export interface PageLink {
 export const PAGES: PageLink[] = [
   { label: 'Início', path: '/', icon: HomeOutlined },
   { label: 'Serviços do servidor', path: '/servicos', icon: AppsOutlined, keywords: 'apps catalogo' },
+  { label: 'Tarefas', path: '/tarefas', icon: TaskAltOutlined, keywords: 'andamento transcricao fila', permission: FILE_EDITOR },
 ]
+
+export const TASKS_PATH = '/tarefas'
 
 export const ACCOUNT_PAGES: PageLink[] = [
   { label: 'Minha conta', path: '/account', icon: ManageAccountsOutlined, keywords: 'perfil senha' },

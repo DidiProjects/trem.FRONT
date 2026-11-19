@@ -9,7 +9,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { groupVars } from '@/products/groupVars'
 import { groupsFor, toolsOf } from '@/products/registry'
 import { visuallyHidden } from '@/utils/a11y'
-import { ACCOUNT_PAGES, ADMIN_PAGES, PAGES, visible, type PageLink } from './links'
+import { isActive, useTasks } from '@/products/tasks/store'
+import { ACCOUNT_PAGES, ADMIN_PAGES, PAGES, TASKS_PATH, visible, type PageLink } from './links'
 
 interface Props {
   /** Called after a link is followed, to close the drawer on small screens. */
@@ -36,7 +37,7 @@ function Heading({ id, children }: { id: string; children: ReactNode }) {
   )
 }
 
-function PageItem({ link, onNavigate }: { link: PageLink; onNavigate?: () => void }) {
+function PageItem({ link, onNavigate, badge }: { link: PageLink; onNavigate?: () => void; badge?: number }) {
   const Icon = link.icon
   return (
     <ListItemButton component={NavLink} to={link.path} end={link.path === '/'} onClick={onNavigate} sx={itemSx}>
@@ -44,6 +45,14 @@ function PageItem({ link, onNavigate }: { link: PageLink; onNavigate?: () => voi
         <Icon fontSize="small" />
       </ListItemIcon>
       <ListItemText primary={link.label} slotProps={{ primary: { sx: { fontWeight: 'inherit' } } }} />
+      {badge ? (
+        <Box component="span" sx={{ minWidth: 22, px: 0.75, borderRadius: '999px', bgcolor: 'primary.main', color: 'primary.contrastText', fontSize: 12, fontWeight: 800, textAlign: 'center' }}>
+          {badge}
+          <Box component="span" sx={visuallyHidden}>
+            {' em andamento'}
+          </Box>
+        </Box>
+      ) : null}
     </ListItemButton>
   )
 }
@@ -55,6 +64,7 @@ export function Sidebar({ onNavigate, onSearch }: Props) {
   const groups = groupsFor(user?.permissions)
   const services = catalog.result.state === 'ready' ? catalog.result.data : []
   const admin = visible(ADMIN_PAGES, user?.permissions)
+  const running = useTasks().filter(isActive).length
 
   return (
     <Box component="nav" aria-label="Navegação principal" sx={{ px: 1.5, py: 2, display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
@@ -88,7 +98,7 @@ export function Sidebar({ onNavigate, onSearch }: Props) {
 
       <List dense disablePadding>
         {visible(PAGES, user?.permissions).map((link) => (
-          <PageItem key={link.path} link={link} onNavigate={onNavigate} />
+          <PageItem key={link.path} link={link} onNavigate={onNavigate} badge={link.path === TASKS_PATH ? running : undefined} />
         ))}
       </List>
 

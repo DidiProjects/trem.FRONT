@@ -8,6 +8,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { ServicesPage } from '@/pages/ServicesPage'
+import { TasksPage } from '@/pages/TasksPage'
 import { VerifyEmailPage } from '@/pages/VerifyEmailPage'
 import { AdminServicesPage } from '@/pages/admin/AdminServicesPage'
 import { AnonymousOnly, RequireAdmin, RequireAuth, RequireSession } from './guards'
@@ -34,6 +35,7 @@ export function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />
           <Route path="/servicos" element={<ServicesPage />} />
+          <Route path="/tarefas" element={<TasksPage />} />
           {productRoutes()}
           <Route path="/account" element={<AccountPage />} />
           <Route element={<RequireAdmin />}>

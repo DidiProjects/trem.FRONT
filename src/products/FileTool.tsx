@@ -27,7 +27,7 @@ interface Props {
   dropTitle: string
   dropHint?: ReactNode
   /** Side panel with the tool's options, next to the files. */
-  options?: ReactNode
+  options?: ReactNode | ((files: File[]) => ReactNode)
   /** Why the action cannot run yet, shown under the button; null when it can. */
   blocker?: (files: File[]) => string | null
   runLabel: (files: File[]) => string
@@ -152,7 +152,7 @@ export function FileTool(props: Props) {
           </Box>
 
           <Box component="aside" aria-label="Opções" sx={{ ...panelSx, flex: '1 1 280px', display: 'grid', gap: 2 }}>
-            {options}
+            {typeof options === 'function' ? options(files) : options}
             {phase.kind === 'error' && (
               <Alert severity="error" role="alert">
                 {phase.message}
