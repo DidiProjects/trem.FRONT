@@ -17,7 +17,7 @@ import { locate } from './registry'
 import { ToolLayout } from './ToolLayout'
 import { useTool } from './toolContext'
 
-export type Outcome = { file: FileResult; detail?: string } | { view: ReactNode; title?: string }
+export type Outcome = { file: FileResult; detail?: string; preview?: ReactNode } | { view: ReactNode; title?: string }
 
 interface Props {
   accept: string
@@ -34,6 +34,11 @@ interface Props {
   run: (files: File[]) => Promise<Outcome>
   /** Tools the produced file can go to next, by route. */
   chain?: string[]
+  /**
+   * Keeps the files and options on screen after a run, with the result below, so the
+   * options can be changed and the tool run again (compressing an image, for one).
+   */
+  inline?: boolean
   onReset?: () => void
 }
 
@@ -42,7 +47,7 @@ type Phase = { kind: 'edit' } | { kind: 'running' } | { kind: 'done'; outcome: O
 const panelSx = { bgcolor: 'background.paper', borderRadius: '20px', p: { xs: 2, sm: 2.5 } }
 
 export function FileTool(props: Props) {
-  const { accept, multiple, maxBytes, dropTitle, dropHint, options, blocker, runLabel, run, chain, onReset } = props
+  const { accept, multiple, maxBytes, dropTitle, dropHint, options, blocker, runLabel, run, chain, inline, onReset } = props
   const { group, tool } = useTool()
   const [files, setFiles] = useState<File[]>(() => handoff.take(tool.path))
   const [phase, setPhase] = useState<Phase>({ kind: 'edit' })
@@ -95,7 +100,7 @@ export function FileTool(props: Props) {
         {announce}
       </Box>
 
-      {phase.kind === 'done' ? (
+      {phase.kind === 'done' && !inline ? (
         <Result outcome={phase.outcome} chain={chain} onReset={reset} />
       ) : files.length === 0 ? (
         <Stack spacing={2}>
@@ -183,6 +188,12 @@ export function FileTool(props: Props) {
           </Box>
         </Box>
       )}
+
+      {phase.kind === 'done' && inline && (
+        <Box sx={{ mt: 3 }}>
+          <Result outcome={phase.outcome} chain={chain} onReset={reset} />
+        </Box>
+      )}
     </ToolLayout>
   )
 }
@@ -208,6 +219,9 @@ function Result({ outcome, chain, onReset }: { outcome: Outcome; chain?: string[
             Baixar
           </Button>
         </Box>
+      ) : null}
+      {'file' in outcome ? (
+        outcome.preview
       ) : (
         <Box>
           {outcome.title && (
