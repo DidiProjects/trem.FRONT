@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { Alert, Button, CircularProgress, InputAdornment, Link, Stack, TextField, Typography } from '@mui/material'
 import CheckCircle from '@mui/icons-material/CheckCircle'
@@ -26,6 +26,7 @@ export function RegisterPage() {
   const [resent, setResent] = useState(false)
   const username = useUsernameCheck(form.values.username, usernameIssue(form.values.username) === null)
   const usernameField = form.field('username')
+  const usernameInput = useRef<HTMLInputElement>(null)
   const usernameError = usernameField.helperText ?? (username.status === 'taken' ? TAKEN : undefined)
   const usernameHint =
     usernameError ??
@@ -36,7 +37,7 @@ export function RegisterPage() {
     setError(null)
     const valid = form.check()
     if (!valid || username.status === 'taken') {
-      if (username.status === 'taken') document.getElementById(usernameField.name)?.focus()
+      if (username.status === 'taken') usernameInput.current?.focus()
       return
     }
     setBusy(true)
@@ -116,7 +117,7 @@ export function RegisterPage() {
         {error && <Alert severity="error">{error}</Alert>}
         <TextField
           {...usernameField}
-          id={usernameField.name}
+          inputRef={usernameInput}
           error={Boolean(usernameError)}
           helperText={usernameHint}
           label="Usuário"
