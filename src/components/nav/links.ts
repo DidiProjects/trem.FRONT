@@ -4,6 +4,8 @@ import AppsOutlined from '@mui/icons-material/AppsOutlined'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import ManageAccountsOutlined from '@mui/icons-material/ManageAccountsOutlined'
 import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined'
+import GroupOutlined from '@mui/icons-material/GroupOutlined'
+import KeyOutlined from '@mui/icons-material/KeyOutlined'
 import { FILE_EDITOR } from '@/products/registry'
 import { isAdmin } from '@/utils/roles'
 
@@ -34,10 +36,13 @@ export const ACCOUNT_PAGES: PageLink[] = [
 export const SHORTCUTS: PageLink[] = [
   { label: 'Ligar a verificação em duas etapas', path: '/account/seguranca', icon: ManageAccountsOutlined, keywords: '2fa mfa totp autenticador senha seguranca' },
   { label: 'Criar chave de API', path: '/account/chaves', icon: ManageAccountsOutlined, keywords: 'token api key script' },
+  { label: 'Aprovar cadastros pendentes', path: '/admin/usuarios?status=pending_approval', icon: GroupOutlined, keywords: 'aprovar cadastro novo usuario pendente', adminOnly: true },
   { label: 'Falar com o administrador', path: '/account/feedback', icon: ManageAccountsOutlined, keywords: 'suporte ajuda feedback bug sugestao acesso' },
 ]
 
 export const ADMIN_PAGES: PageLink[] = [
+  { label: 'Usuários', path: '/admin/usuarios', icon: GroupOutlined, keywords: 'administracao contas aprovar cadastro permissoes acesso', adminOnly: true },
+  { label: 'Aplicações e chaves', path: '/admin/aplicacoes', icon: KeyOutlined, keywords: 'administracao permissoes clientes api integracao', adminOnly: true },
   {
     label: 'Catálogo de serviços',
     path: '/admin/services',
