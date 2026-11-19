@@ -3,6 +3,7 @@ import ImageOutlined from '@mui/icons-material/ImageOutlined'
 import GraphicEqOutlined from '@mui/icons-material/GraphicEqOutlined'
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
 import BoltOutlined from '@mui/icons-material/BoltOutlined'
+import { aiSections } from './ai'
 import { documentSections } from './documents'
 import { imageSections } from './images'
 import { mediaSections } from './media'
@@ -52,7 +53,7 @@ export const GROUPS: ProductGroup[] = [
     icon: AutoAwesomeOutlined,
     permission: AI,
     color: { dark: '#ff5c8a', light: '#b8235a' },
-    sections: [],
+    sections: aiSections,
   },
   {
     id: 'automation',
