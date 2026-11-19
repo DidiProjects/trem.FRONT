@@ -9,7 +9,7 @@ import { groupVars } from '@/products/groupVars'
 import { groupsFor, toolsOf } from '@/products/registry'
 import type { ProductGroup } from '@/products/types'
 import { fold } from '@/utils/text'
-import { ACCOUNT_PAGES, ADMIN_PAGES, PAGES, visible } from './links'
+import { ACCOUNT_PAGES, ADMIN_PAGES, PAGES, SHORTCUTS, visible } from './links'
 
 interface Item {
   id: string
@@ -60,10 +60,18 @@ function useSections(): Section[] {
       to: p.path,
       words: `${p.label} ${p.keywords ?? ''}`,
     }))
+    const actions: Item[] = visible(SHORTCUTS, permissions).map((p) => ({
+      id: `action:${p.label}`,
+      label: p.label,
+      detail: 'Ação',
+      to: p.path,
+      words: `${p.label} ${p.keywords ?? ''}`,
+    }))
     return [
       { title: 'Produtos', items: products },
       { title: 'Serviços', items: servers },
       { title: 'Páginas', items: pages },
+      { title: 'Ações', items: actions },
     ]
   }, [permissions, services])
 }
@@ -107,7 +115,7 @@ function Palette({ onClose }: { onClose: () => void }) {
   const shown = filter(sections, query)
   const flat = shown.flatMap((s) => s.items)
   const current = flat[Math.min(active, flat.length - 1)]
-  const optionId = (item: Item) => `${listId}-${item.id}`
+  const optionId = (item: Item) => `${listId}-${item.id.replace(/[^\w-]/g, '_')}`
 
   const go = (item: Item, newTab = false) => {
     onClose()

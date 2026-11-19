@@ -27,7 +27,14 @@ export const PAGES: PageLink[] = [
 export const TASKS_PATH = '/tarefas'
 
 export const ACCOUNT_PAGES: PageLink[] = [
-  { label: 'Minha conta', path: '/account', icon: ManageAccountsOutlined, keywords: 'perfil senha' },
+  { label: 'Minha conta', path: '/account', icon: ManageAccountsOutlined, keywords: 'perfil' },
+]
+
+/** Reachable from Ctrl K, not listed in the menu. */
+export const SHORTCUTS: PageLink[] = [
+  { label: 'Ligar a verificação em duas etapas', path: '/account/seguranca', icon: ManageAccountsOutlined, keywords: '2fa mfa totp autenticador senha seguranca' },
+  { label: 'Criar chave de API', path: '/account/chaves', icon: ManageAccountsOutlined, keywords: 'token api key script' },
+  { label: 'Falar com o administrador', path: '/account/feedback', icon: ManageAccountsOutlined, keywords: 'suporte ajuda feedback bug sugestao acesso' },
 ]
 
 export const ADMIN_PAGES: PageLink[] = [
