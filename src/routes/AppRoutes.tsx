@@ -37,7 +37,7 @@ export function AppRoutes() {
           <Route path="/servicos" element={<ServicesPage />} />
           <Route path="/tarefas" element={<TasksPage />} />
           {productRoutes()}
-          <Route path="/account" element={<AccountPage />} />
+          <Route path="/account/*" element={<AccountPage />} />
           <Route element={<RequireAdmin />}>
             <Route path="/admin/services" element={<AdminServicesPage />} />
           </Route>
