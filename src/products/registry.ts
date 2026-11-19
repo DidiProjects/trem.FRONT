@@ -4,6 +4,7 @@ import GraphicEqOutlined from '@mui/icons-material/GraphicEqOutlined'
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
 import BoltOutlined from '@mui/icons-material/BoltOutlined'
 import { documentSections } from './documents'
+import { imageSections } from './images'
 import type { GroupId, ProductGroup, Tool } from './types'
 
 export const FILE_EDITOR = 'trem:file_editor'
@@ -30,7 +31,7 @@ export const GROUPS: ProductGroup[] = [
     icon: ImageOutlined,
     permission: FILE_EDITOR,
     color: { dark: '#3ee0a1', light: '#0b7a52' },
-    sections: [],
+    sections: imageSections,
   },
   {
     id: 'media',

@@ -10,8 +10,6 @@ export interface FileResult {
 export const MB = 1024 * 1024
 /** trem.API refuses PDFs above this size. */
 export const PDF_MAX = 50 * MB
-/** Images and other files go through the generic 10 MB check. */
-export const IMAGE_MAX = 10 * MB
 /** Cloudflare, in front of trem.API, drops requests above 100 MB. */
 export const REQUEST_MAX = 100 * MB
 
