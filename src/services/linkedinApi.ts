@@ -1,3 +1,4 @@
+import { env } from '@/config/env'
 import { authRequest } from './session'
 
 export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
@@ -54,7 +55,13 @@ const job = (id: string) => `${BASE}/jobs/${encodeURIComponent(id)}`
 export const linkedinApi = {
   session: () => authRequest<{ state: SessionState }>(`${BASE}/session`),
   disconnect: () => authRequest<void>(`${BASE}/session`, { method: 'DELETE' }),
-  startLogin: () => authRequest<LoginStart>(`${BASE}/session/login`, { method: 'POST' }),
+  // trem.API answers with a path on its own domain (its old page lived there). Resolved
+  // here, a tab opened from this front would land on the front's domain instead.
+  startLogin: () =>
+    authRequest<LoginStart>(`${BASE}/session/login`, { method: 'POST' }).then((login) => ({
+      ...login,
+      url: new URL(login.url, `${env.apiUrl}/`).href,
+    })),
   loginState: (id: string) => authRequest<{ status: LoginStatus }>(`${BASE}/session/login/${encodeURIComponent(id)}`),
   cancelLogin: (id: string) => authRequest<void>(`${BASE}/session/login/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
