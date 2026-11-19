@@ -1,15 +1,17 @@
 import { Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from '@/components/AppLayout'
 import { AccountPage } from '@/pages/AccountPage'
-import { CatalogPage } from '@/pages/CatalogPage'
 import { ChangePasswordPage } from '@/pages/ChangePasswordPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
+import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
+import { ServicesPage } from '@/pages/ServicesPage'
 import { VerifyEmailPage } from '@/pages/VerifyEmailPage'
 import { AdminServicesPage } from '@/pages/admin/AdminServicesPage'
 import { AnonymousOnly, RequireAdmin, RequireAuth, RequireSession } from './guards'
+import { productRoutes } from './productRoutes'
 
 export function AppRoutes() {
   return (
@@ -30,7 +32,9 @@ export function AppRoutes() {
 
       <Route element={<RequireAuth />}>
         <Route element={<AppLayout />}>
-          <Route index element={<CatalogPage />} />
+          <Route index element={<HomePage />} />
+          <Route path="/servicos" element={<ServicesPage />} />
+          {productRoutes()}
           <Route path="/account" element={<AccountPage />} />
           <Route element={<RequireAdmin />}>
             <Route path="/admin/services" element={<AdminServicesPage />} />
