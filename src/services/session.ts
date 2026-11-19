@@ -135,17 +135,19 @@ export function refresh(): Promise<string | null> {
 }
 
 /** A request with the access token; on 401 it renews the token once and tries again. */
-export async function authRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function authSend(path: string, options: RequestOptions = {}): Promise<Response> {
   const attempt = (token: string | null) =>
     send(path, { ...options, headers: { ...options.headers, ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
 
-  let res = await attempt(accessToken ?? (await refresh()))
-  if (res.status === 401) {
-    const token = await refresh()
-    if (!token) throw new ApiError('Sua sessão expirou. Entre de novo.', 401)
-    res = await attempt(token)
-  }
-  return readJson<T>(res)
+  const res = await attempt(accessToken ?? (await refresh()))
+  if (res.status !== 401) return res
+  const token = await refresh()
+  if (!token) throw new ApiError('Sua sessão expirou. Entre de novo.', 401)
+  return attempt(token)
+}
+
+export async function authRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return readJson<T>(await authSend(path, options))
 }
 
 channel?.addEventListener('message', (message: MessageEvent) => {
