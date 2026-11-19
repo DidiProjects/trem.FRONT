@@ -6,10 +6,12 @@ interface Props {
   /** Full image address, or undefined for the initial. */
   src?: string
   size?: number
+  /** Corner radius; the menu uses the product tiles' 8px. */
+  radius?: string
 }
 
 /** The service's logo on a tile; the name's initial when there is none or it fails to load. */
-export function ServiceLogo({ name, src, size = 56 }: Props) {
+export function ServiceLogo({ name, src, size = 56, radius = '32px' }: Props) {
   const [failed, setFailed] = useState<string | undefined>()
   const showImage = src && failed !== src
 
@@ -19,7 +21,7 @@ export function ServiceLogo({ name, src, size = 56 }: Props) {
         width: size,
         height: size,
         flexShrink: 0,
-        borderRadius: 2,
+        borderRadius: radius,
         bgcolor: 'action.hover',
         display: 'grid',
         placeItems: 'center',
