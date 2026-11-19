@@ -1,15 +1,16 @@
 import { Box, Typography } from '@mui/material'
+import { lifted } from './surface'
 import type { ChatMessage } from '@/services/llmApi'
 import { visuallyHidden } from '@/utils/a11y'
 
 /** Text with ``` fenced blocks shown as code; everything else keeps its line breaks. */
-function Content({ text }: { text: string }) {
+function Content({ text, mine }: { text: string; mine: boolean }) {
   const parts = text.split(/```[\w-]*\n?/)
   return (
     <>
       {parts.map((part, i) =>
         i % 2 === 1 ? (
-          <Box key={i} component="pre" sx={{ m: '8px 0', p: 1.5, borderRadius: '12px', bgcolor: 'background.default', overflowX: 'auto', fontSize: 14 }}>
+          <Box key={i} component="pre" sx={{ m: '8px 0', p: 1.5, borderRadius: '12px', bgcolor: mine ? 'rgba(11, 20, 55, 0.07)' : 'background.default', overflowX: 'auto', fontSize: 14 }}>
             <code>{part.replace(/\n$/, '')}</code>
           </Box>
         ) : (
@@ -29,19 +30,15 @@ export function Message({ message }: { message: ChatMessage }) {
   return (
     <Box component="li" sx={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}>
       <Box
-        sx={{
-          maxWidth: { xs: '92%', sm: '78%' },
-          px: 2,
-          py: 1.5,
-          borderRadius: '20px',
-          bgcolor: mine ? 'var(--group)' : 'background.paper',
-          color: mine ? 'var(--on-group)' : 'text.primary',
-        }}
+        sx={[
+          { maxWidth: { xs: '92%', sm: '78%' }, px: 2, py: 1.5, borderRadius: '20px' },
+          mine ? lifted : { bgcolor: 'background.paper', color: 'text.primary' },
+        ]}
       >
         <Box component="span" sx={visuallyHidden}>
           {mine ? 'Você: ' : 'IA: '}
         </Box>
-        <Content text={message.content} />
+        <Content text={message.content} mine={mine} />
       </Box>
     </Box>
   )
