@@ -6,6 +6,7 @@ import Download from '@mui/icons-material/Download'
 import SearchOutlined from '@mui/icons-material/SearchOutlined'
 import { useSnackbar } from 'notistack'
 import { useAuth } from '@/hooks/useAuth'
+import { CHAT_PATH } from '@/products/ai'
 import { handoff } from '@/products/handoff'
 import { AI } from '@/products/registry'
 import { baseName } from '@/services/filesApi'
@@ -14,7 +15,6 @@ import { saveBlob } from '@/utils/download'
 import { fold } from '@/utils/text'
 import { clock, toSrt, toText, toVtt } from './transcript'
 
-const CHAT_PATH = '/ia'
 
 export function TranscriptView({ transcript, fileName }: { transcript: Transcript; fileName: string }) {
   const { user } = useAuth()
