@@ -10,6 +10,7 @@ import ManageAccounts from '@mui/icons-material/ManageAccounts'
 import { CatalogContext } from '@/contexts/catalogContext'
 import { useAuth } from '@/hooks/useAuth'
 import { useLoad } from '@/hooks/useLoad'
+import { useTaskRunner } from '@/products/tasks/runner'
 import { hubApi } from '@/services/hubApi'
 import { isAdmin } from '@/utils/roles'
 import { Brand } from './Brand'
@@ -24,6 +25,7 @@ export function AppLayout() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const catalog = useLoad(hubApi.catalog)
+  useTaskRunner(user?.id)
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [drawer, setDrawer] = useState(false)
   const [palette, setPalette] = useState(false)
