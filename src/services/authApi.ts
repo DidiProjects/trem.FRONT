@@ -50,6 +50,9 @@ export const authApi = {
       body: { current_password: currentPassword, new_password: newPassword },
     }),
 
+  usernameAvailable: (username: string) =>
+    request<{ available: boolean }>(`/auth/username-available?username=${encodeURIComponent(username)}`),
+
   register: (username: string, email: string, password: string) =>
     request<Message>('/auth/register', { method: 'POST', body: { username, email, password } }),
 

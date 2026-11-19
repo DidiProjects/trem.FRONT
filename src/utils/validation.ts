@@ -54,14 +54,21 @@ export const recoverySchema = z.object({
 
 export const emailSchema = z.object({ email })
 
+const username = z
+  .string()
+  .trim()
+  .min(3, 'Mínimo de 3 caracteres')
+  .max(50, 'Máximo de 50 caracteres')
+  .regex(USERNAME_PATTERN, 'Use letras, números, ponto, hífen ou sublinhado')
+
+export function usernameIssue(value: string): string | null {
+  const result = username.safeParse(value)
+  return result.success ? null : (result.error.issues[0]?.message ?? 'Nome inválido')
+}
+
 export const registerSchema = z
   .object({
-    username: z
-      .string()
-      .trim()
-      .min(3, 'Mínimo de 3 caracteres')
-      .max(50, 'Máximo de 50 caracteres')
-      .regex(USERNAME_PATTERN, 'Use letras, números, ponto, hífen ou sublinhado'),
+    username,
     email,
     password: z.string(),
     confirm: z.string(),

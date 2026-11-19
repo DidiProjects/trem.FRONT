@@ -223,6 +223,6 @@ describe('admin area', () => {
     await user.click(await screen.findByRole('button', { name: 'Descer Immich' }))
 
     await waitFor(() => expect(api.to('PUT', '/admin/hub/services/order')[0]?.body).toEqual({ slugs: ['radarr', 'immich'] }))
-    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Radarr', 'Immich'])
+    expect(within(screen.getByRole('main')).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Radarr', 'Immich'])
   })
 })

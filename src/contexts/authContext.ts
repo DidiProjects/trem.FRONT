@@ -30,6 +30,8 @@ export interface AuthContextValue {
   retry: () => void
   clearNotice: () => void
   clearPendingMfa: () => void
+  /** Reads /me again, after a change to the account (second factor, permissions). */
+  reloadUser: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)
