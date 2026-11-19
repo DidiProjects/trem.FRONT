@@ -1,8 +1,9 @@
 # trem.FRONT
 
-Login page and catalog of the self-hosted services (Immich, Radarr, Sonarr, Prowlarr,
-qBittorrent...), with an admin area to manage them. Accounts, passwords, the second factor
-and the catalog itself come from [trem.API](https://github.com/DidiProjects/trem.API).
+The trem's web app, on [trem.API](https://github.com/DidiProjects/trem.API): login, the
+**products** (the API's own tools: PDF, images, audio and video, AI, LinkedIn automation),
+the **services** of the server (Immich, Jellyfin, Radarr... each with its own login) and
+the administration of accounts, permissions and keys.
 
 React 19 · TypeScript · Vite 8 · MUI 9 · React Router 7 · Zod 4 · Vitest.
 
@@ -55,13 +56,54 @@ npm run build
   characters, not repetitive, without the username or e-mail). The API checks again,
   including known breaches, and its message shows on the field.
 
+## Products and services
+
+Two kinds of things, kept apart in the menu, Home, Ctrl K and the admin:
+
+- **Products** are tools of the trem, used here with the trem login. They come in groups,
+  each with its route, color and the permission that unlocks it. The registry is
+  `src/products/registry.ts`; each group lists its tools in `src/products/<group>/index.ts`.
+- **Services** are separate apps of the server, opened in a new tab. They come from the
+  catalog below.
+
+| Group | Routes | Permission | trem.API |
+|---|---|---|---|
+| Documentos | `/documentos/*` (9 tools) | `trem:file_editor` | `/pdf/*` |
+| Imagens | `/imagens/*` (3) | `trem:file_editor` | `/image/*` |
+| Áudio e vídeo | `/midia/cortar`, `/midia/transcrever` | `trem:file_editor` | `/movie/*`, `/audio/*` |
+| IA | `/ia/conversa` | `trem:ai` | `/llm/*` |
+| Automação | `/automacoes/linkedin` | `trem:linkedin_scraper` | `/scrapers/linkedin/*` |
+
+A group without its permission is not shown anywhere, and its routes explain how to ask
+for it (trem.API checks the permission again on every call). Other pages: `/servicos`,
+`/tarefas`, `/account/*` (profile, second factor, API keys, feedback),
+`/admin/usuarios`, `/admin/aplicacoes/*`, `/admin/services`.
+
+Navigation: a sidebar (a drawer below `md`), **Ctrl K** to jump to any product, service,
+page or account action, and Home, which suggests the tools for a dropped file and lists
+the tools used last. A produced file can go on to another tool without a new upload
+(`src/products/handoff.ts`, memory only).
+
+- File tools share `FileTool` (drop, options, run, download). Files are named by the front:
+  trem.API does not expose `Content-Disposition` to other origins.
+- Transcriptions go up in parts (Cloudflare drops requests above 100 MB) and are followed
+  by a runner in the layout; `/tarefas` lists them. trem.API keeps jobs in memory, so a
+  restart loses them and the page says so.
+- Chat questions go as jobs (`/llm/jobs`), since a sleeping model takes minutes.
+- Conversations, tasks and recent tools stay in this browser's `localStorage`, per account.
+
 ## Catalog
 
 The services live in trem.API (`/hub/services`): name, description, address, logo and
 order. The catalog shows what trem.API returns for the account: enabled services with an
 address, granted with the permission `hub:<service>`.
 
-### Administration (`/admin/services`)
+### Administration
+
+`/admin/usuarios` approves sign-ups and sets what each account may use, with the same
+split: products, services, other applications, administration. `/admin/aplicacoes` manages
+applications, their permissions and service keys (the personal keys are in Minha conta).
+The catalog of services is `/admin/services`:
 
 For accounts holding `trem:admin`, from the account menu ("Serviços do catálogo"). trem.API
 also requires the login to have used the second factor (TOTP); without it the page says so.
