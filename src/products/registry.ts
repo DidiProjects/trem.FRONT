@@ -4,6 +4,7 @@ import GraphicEqOutlined from '@mui/icons-material/GraphicEqOutlined'
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
 import BoltOutlined from '@mui/icons-material/BoltOutlined'
 import { aiSections } from './ai'
+import { automationSections } from './automation'
 import { documentSections } from './documents'
 import { imageSections } from './images'
 import { mediaSections } from './media'
@@ -63,7 +64,7 @@ export const GROUPS: ProductGroup[] = [
     icon: BoltOutlined,
     permission: LINKEDIN_SCRAPER,
     color: { dark: '#ffc23d', light: '#8a5a00' },
-    sections: [],
+    sections: automationSections,
   },
 ]
 
