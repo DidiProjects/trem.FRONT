@@ -17,6 +17,7 @@ import { MAX_BODY, llmApi, type ModelStatus } from '@/services/llmApi'
 import { formatBytes } from '@/utils/text'
 import { chatStore, useChats, type Chat } from './chatStore'
 import { Message } from './Message'
+import { lifted } from './surface'
 
 const HEALTH_MS = 20_000
 const STARTERS = ['Resuma este texto em tópicos', 'Escreva um e-mail educado recusando um convite', 'Explique este erro e como corrigir', 'Ideias de passeio para o fim de semana']
@@ -132,7 +133,7 @@ export default function ChatPage() {
             startIcon={<Add />}
             component={RouterLink}
             to={tool.path}
-            sx={{ bgcolor: 'var(--group)', color: 'var(--on-group)', mb: 1 }}
+            sx={[lifted, { mb: 1 }]}
           >
             Nova conversa
           </Button>
@@ -276,7 +277,7 @@ export default function ChatPage() {
                 type="submit"
                 aria-label="Enviar"
                 disabled={!draft.trim() || Boolean(chat?.pending) || tooBig}
-                sx={{ bgcolor: 'var(--group)', color: 'var(--on-group)', width: 48, height: 48, '&:hover': { bgcolor: 'var(--group)' } }}
+                sx={[lifted, { width: 48, height: 48 }]}
               >
                 <ArrowUpward />
               </IconButton>
