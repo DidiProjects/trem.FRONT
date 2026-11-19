@@ -65,8 +65,13 @@ describe('LinkedIn', () => {
     await user.click(await screen.findByRole('button', { name: 'Nova busca' }))
     const dialog = await screen.findByRole('dialog', { name: 'Nova busca' })
     expect(within(dialog).getByRole('button', { name: 'Criar busca' })).toBeDisabled()
-    await user.type(within(dialog).getByLabelText(/Nome da busca/), 'Remoto EU')
-    await user.type(within(dialog).getByLabelText('Termos de vagas'), 'react{Enter}typescript')
+    // Pasted, not typed: the whole form re-renders per key, about 0.2 s each in jsdom.
+    await user.click(within(dialog).getByLabelText(/Nome da busca/))
+    await user.paste('Remoto EU')
+    await user.click(within(dialog).getByLabelText('Termos de vagas'))
+    await user.paste('react')
+    await user.keyboard('{Enter}')
+    await user.paste('typescript')
     await user.click(within(dialog).getByRole('checkbox', { name: 'Sáb' }))
     await user.click(within(dialog).getByRole('button', { name: 'Criar busca' }))
 
