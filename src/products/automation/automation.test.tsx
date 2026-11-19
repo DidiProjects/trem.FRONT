@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { env } from '@/config/env'
 import { session } from '@/services/session'
 import { loggedIn, openAt } from '@/test/app'
 import { fakeApi, json } from '@/test/fakeApi'
@@ -100,5 +101,26 @@ describe('LinkedIn', () => {
     fakeApi({ ...base, 'GET /scrapers/linkedin/session': () => json({ state: 'none' }) })
     openAt('/automacoes/linkedin')
     expect(await screen.findByRole('button', { name: 'Conectar LinkedIn' })).toBeInTheDocument()
+  })
+
+  it('opens the LinkedIn login on trem.API, not on the front', async () => {
+    const login = 'a'.repeat(32)
+    fakeApi({
+      ...base,
+      'GET /scrapers/linkedin/session': () => json({ state: 'none' }),
+      'POST /scrapers/linkedin/session/login': () =>
+        json({ id: login, status: 'starting', url: `/scrapers/linkedin/login/${login}/start?token=t` }, 201),
+      [`GET /scrapers/linkedin/session/login/${login}`]: () => json({ status: 'waiting' }),
+    })
+    const tab = { location: { href: 'about:blank' }, close: vi.fn() }
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window)
+    const user = userEvent.setup()
+    openAt('/automacoes/linkedin')
+
+    await user.click(await screen.findByRole('button', { name: 'Conectar LinkedIn' }))
+
+    expect(open).toHaveBeenCalledWith('about:blank', '_blank')
+    await waitFor(() => expect(tab.location.href).toBe(`${env.apiUrl}/scrapers/linkedin/login/${login}/start?token=t`))
+    open.mockRestore()
   })
 })
