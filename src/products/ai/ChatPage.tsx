@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router'
 import { Alert, Box, Button, Chip, Collapse, IconButton, List, ListItemButton, ListItemText, TextField, Tooltip, Typography, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
@@ -57,6 +57,34 @@ function pendingText(chat: Chat, status: ModelStatus | 'unknown'): string {
   return `Escrevendo · ${seconds} s`
 }
 
+const FILL_MIN = 320
+
+/**
+ * Sizes the chat to the rest of the viewport, so the page itself never scrolls and the
+ * messages scroll inside. Measured instead of CSS: the space left depends on the header
+ * above, which wraps differently per width. Re-measured when anything on the page resizes.
+ */
+function useFillViewport(ref: RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const main = el.closest('main')
+    const fit = () => {
+      const bottom = main ? parseFloat(getComputedStyle(main).paddingBottom) || 0 : 0
+      const top = el.getBoundingClientRect().top + window.scrollY
+      el.style.height = `${Math.max(FILL_MIN, Math.floor(window.innerHeight - top - bottom))}px`
+    }
+    fit()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit)
+    observer?.observe(document.body)
+    window.addEventListener('resize', fit)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', fit)
+    }
+  }, [ref])
+}
+
 function useTick(active: boolean) {
   const [, setNow] = useState(0)
   useEffect(() => {
@@ -79,16 +107,19 @@ export default function ChatPage() {
   const [listOpen, setListOpen] = useState(false)
   const wide = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true, defaultMatches: true })
   const fileRef = useRef<HTMLInputElement>(null)
-  const endRef = useRef<HTMLDivElement>(null)
+  const fillRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   useTick(Boolean(chat?.pending))
+  useFillViewport(fillRef)
 
   useEffect(() => {
     if (user?.id) chatStore.open(user.id)
   }, [user?.id])
 
   useEffect(() => {
-    endRef.current?.scrollIntoView?.({ block: 'end' })
-  }, [chat?.messages.length, chat?.pending])
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [id, chat?.messages.length, chat?.pending, chat?.error])
 
   const onType = (value: string) => {
     setDraft(value)
@@ -125,8 +156,22 @@ export default function ChatPage() {
 
   return (
     <ToolLayout group={group} tool={tool} subtitle="O modelo roda no servidor de casa. As conversas ficam só neste navegador.">
-      <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        <Box component="nav" aria-label="Conversas" sx={{ flex: '1 1 220px', bgcolor: 'background.paper', borderRadius: '20px', p: 1 }}>
+      <Box ref={fillRef} sx={{ display: 'flex', flexDirection: wide ? 'row' : 'column', gap: wide ? 3 : 2, minHeight: FILL_MIN }}>
+        <Box
+          component="nav"
+          aria-label="Conversas"
+          sx={{
+            width: wide ? 260 : 'auto',
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            maxHeight: wide ? 'none' : '40%',
+            bgcolor: 'background.paper',
+            borderRadius: '20px',
+            p: 1,
+          }}
+        >
           <Button
             fullWidth
             variant="contained"
@@ -148,7 +193,7 @@ export default function ChatPage() {
               Conversas ({chats.length})
             </Button>
           )}
-          <Collapse in={wide || listOpen}>
+          <Collapse in={wide || listOpen} sx={{ minHeight: 0, overflowY: 'auto' }}>
             <List dense disablePadding>
               {chats.map((c) => (
                 <ListItemButton
@@ -171,8 +216,12 @@ export default function ChatPage() {
           </Collapse>
         </Box>
 
-        <Box component="section" aria-label={chat?.title ?? 'Nova conversa'} sx={{ flex: '999 1 480px', minWidth: 0, display: 'grid', gap: 2 }}>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Box
+          component="section"
+          aria-label={chat?.title ?? 'Nova conversa'}
+          sx={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 2 }}
+        >
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
             <Chip role="status" label={STATUS[status].label} color={STATUS[status].color} variant="outlined" sx={{ fontWeight: 700 }} />
             <Box sx={{ flexGrow: 1 }} />
             {chat && (
@@ -190,45 +239,66 @@ export default function ChatPage() {
             )}
           </Box>
 
-          {!chat && (
-            <Box sx={{ textAlign: 'center', py: { xs: 2, sm: 4 } }}>
-              <Typography variant="h2" sx={{ mb: 2 }}>
-                Como posso ajudar?
-              </Typography>
-              <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))' }}>
-                {STARTERS.map((s) => (
-                  <Button key={s} variant="outlined" onClick={() => onType(s)} sx={{ justifyContent: 'flex-start', textAlign: 'left', py: 1.5, borderRadius: '16px' }}>
-                    {s}
-                  </Button>
+          <Box
+            ref={scrollRef}
+            role="region"
+            aria-label="Histórico da conversa"
+            // Focusable so the history scrolls from the keyboard too.
+            tabIndex={0}
+            sx={{
+              position: 'relative',
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overscrollBehavior: 'contain',
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr)',
+              alignContent: 'start',
+              gap: 2,
+              p: 0.5,
+              borderRadius: '12px',
+              '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main' },
+            }}
+          >
+            {!chat && (
+              <Box sx={{ textAlign: 'center', py: { xs: 2, sm: 4 } }}>
+                <Typography variant="h2" sx={{ mb: 2 }}>
+                  Como posso ajudar?
+                </Typography>
+                <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))' }}>
+                  {STARTERS.map((s) => (
+                    <Button key={s} variant="outlined" onClick={() => onType(s)} sx={{ justifyContent: 'flex-start', textAlign: 'left', py: 1.5, borderRadius: '16px' }}>
+                      {s}
+                    </Button>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {chat && (
+              <Box component="ol" aria-label="Mensagens" aria-live="polite" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5 }}>
+                {chat.messages.map((m, i) => (
+                  <Message key={i} message={m} />
                 ))}
               </Box>
-            </Box>
-          )}
+            )}
 
-          {chat && (
-            <Box component="ol" aria-label="Mensagens" aria-live="polite" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1.5 }}>
-              {chat.messages.map((m, i) => (
-                <Message key={i} message={m} />
-              ))}
-            </Box>
-          )}
+            {chat?.pending && (
+              <Box role="status" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
+                <Typography variant="body2">{pendingText(chat, status)}</Typography>
+                <Button size="small" startIcon={<StopRounded />} onClick={() => chatStore.stop(chat.id)}>
+                  Parar de esperar
+                </Button>
+              </Box>
+            )}
+            {chat?.error && (
+              <Alert severity="error" action={<Button color="inherit" onClick={() => chatStore.retry(chat.id)}>Tentar de novo</Button>}>
+                {chat.error}
+              </Alert>
+            )}
+          </Box>
 
-          {chat?.pending && (
-            <Box role="status" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
-              <Typography variant="body2">{pendingText(chat, status)}</Typography>
-              <Button size="small" startIcon={<StopRounded />} onClick={() => chatStore.stop(chat.id)}>
-                Parar de esperar
-              </Button>
-            </Box>
-          )}
-          {chat?.error && (
-            <Alert severity="error" action={<Button color="inherit" onClick={() => chatStore.retry(chat.id)}>Tentar de novo</Button>}>
-              {chat.error}
-            </Alert>
-          )}
-          <div ref={endRef} />
-
-          <Box component="form" onSubmit={onSubmit} sx={{ bgcolor: 'background.paper', borderRadius: '24px', p: 1, display: 'grid', gap: 1 }}>
+          <Box component="form" onSubmit={onSubmit} sx={{ flexShrink: 0, bgcolor: 'background.paper', borderRadius: '24px', p: 1, display: 'grid', gap: 1 }}>
             {attachment && (
               <Box sx={{ px: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
