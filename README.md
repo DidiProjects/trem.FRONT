@@ -114,6 +114,21 @@ also requires the login to have used the second factor (TOTP); without it the pa
 - Logo: PNG, WebP or SVG up to 256 KB, sent to trem.API and served from there.
 - "Acesso": one switch per active account. The change does not end the account's session;
   it shows the next time the catalog opens.
+- "Login único": the service logs people in with their trem account (OpenID Connect,
+  trem.API `docs/oidc.md`). Set the redirect URIs exactly as the service sends them (http
+  only for local or Tailscale addresses); the client secret shows once, and "Gerar novo
+  segredo" replaces it at once. The dialog lists the issuer, discovery URL and client ID to
+  paste in the service.
+
+### Login of a hub service (`/sso`)
+
+trem.API sends a service's login to `/sso?request=…`: the session lives in this front (the
+refresh cookie is partitioned under its site), so this is where the account confirms
+"Continuar como <user>". trem.API answers with the address to go back to, built from the
+redirect URI registered for the service, never from the request. Without a session the
+login page comes first and returns to the same `/sso?request=…`. An account without
+`hub:<service>` is told so and can only go back. Netlify serves `/sso` with
+`frame-ancestors 'none'`, so it cannot be framed into a hidden click.
 
 The five initial services come from trem.API's migration 010 with their logos
 ([dashboard-icons](https://github.com/homarr-labs/dashboard-icons), Apache-2.0) and no
