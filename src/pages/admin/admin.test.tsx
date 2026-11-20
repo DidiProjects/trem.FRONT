@@ -225,4 +225,83 @@ describe('admin area', () => {
     await waitFor(() => expect(api.to('PUT', '/admin/hub/services/order')[0]?.body).toEqual({ slugs: ['radarr', 'immich'] }))
     expect(within(screen.getByRole('main')).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Radarr', 'Immich'])
   })
+
+  describe('login único', () => {
+    const URI = 'http://100.64.0.1:2283/auth/login'
+    const CLIENT = {
+      client_id: 'hub.immich',
+      redirect_uris: [URI],
+      secret_created_at: '2026-11-20T00:00:00Z',
+      created_at: '2026-11-20T00:00:00Z',
+      updated_at: '2026-11-20T00:00:00Z',
+    }
+
+    it('turns it on and shows the secret only once', async () => {
+      const api = fakeApi({
+        ...loggedIn(),
+        'GET /admin/hub/services': () => json([SERVICE]),
+        'GET /admin/hub/services/immich/oidc': () => json({ detail: 'Serviço sem login único configurado' }, 404),
+        'PUT /admin/hub/services/immich/oidc': () => json({ ...CLIENT, client_secret: 's3cr3t-value' }, 201),
+      })
+      const user = userEvent.setup()
+      openAt('/admin/services')
+
+      await user.click(await screen.findByRole('button', { name: 'Login único em Immich' }))
+      const dialog = screen.getByRole('dialog', { name: 'Login único em Immich' })
+      await user.click(await within(dialog).findByLabelText('Redirect URIs'))
+      await user.paste(`${URI}\n\n  ${URI}/extra  `)
+      await user.click(within(dialog).getByRole('button', { name: 'Ativar login único' }))
+
+      const secret = await within(dialog).findByRole('region', { name: 'Segredo do login único' })
+      expect(within(secret).getByText('s3cr3t-value')).toBeInTheDocument()
+      expect(api.to('PUT', '/admin/hub/services/immich/oidc')[0].body).toEqual({ redirect_uris: [URI, `${URI}/extra`] })
+
+      await user.click(within(secret).getByLabelText('Guardei em lugar seguro'))
+      await user.click(within(secret).getByRole('button', { name: 'Concluir' }))
+      expect(within(dialog).queryByText('s3cr3t-value')).not.toBeInTheDocument()
+      expect(within(dialog).getByText('hub.immich')).toBeInTheDocument()
+      expect(within(dialog).getByText(`${env.apiUrl}/.well-known/openid-configuration`)).toBeInTheDocument()
+    })
+
+    it('shows a refused address on the field', async () => {
+      fakeApi({
+        ...loggedIn(),
+        'GET /admin/hub/services': () => json([SERVICE]),
+        'GET /admin/hub/services/immich/oidc': () => json(CLIENT),
+        'PUT /admin/hub/services/immich/oidc': () =>
+          json({ detail: [{ loc: ['body', 'redirect_uris'], msg: 'Value error, http só para endereço local ou da Tailscale; fora disso, https' }] }, 422),
+      })
+      const user = userEvent.setup()
+      openAt('/admin/services')
+
+      await user.click(await screen.findByRole('button', { name: 'Login único em Immich' }))
+      const dialog = screen.getByRole('dialog', { name: 'Login único em Immich' })
+      const field = await within(dialog).findByLabelText('Redirect URIs')
+      expect(field).toHaveValue(URI)
+      await user.clear(field)
+      await user.paste('http://fotos.example.com/cb')
+      await user.click(within(dialog).getByRole('button', { name: 'Salvar endereços' }))
+
+      expect(await within(dialog).findByText('http só para endereço local ou da Tailscale; fora disso, https')).toBeInTheDocument()
+    })
+
+    it('a new secret only after confirming', async () => {
+      const api = fakeApi({
+        ...loggedIn(),
+        'GET /admin/hub/services': () => json([SERVICE]),
+        'GET /admin/hub/services/immich/oidc': () => json(CLIENT),
+        'POST /admin/hub/services/immich/oidc/secret': () => json({ ...CLIENT, client_secret: 'novo-segredo' }),
+      })
+      const user = userEvent.setup()
+      openAt('/admin/services')
+
+      await user.click(await screen.findByRole('button', { name: 'Login único em Immich' }))
+      const dialog = screen.getByRole('dialog', { name: 'Login único em Immich' })
+      await user.click(await within(dialog).findByRole('button', { name: 'Gerar novo segredo' }))
+      expect(api.to('POST', '/admin/hub/services/immich/oidc/secret')).toHaveLength(0)
+      await user.click(within(dialog).getByRole('button', { name: 'Gerar' }))
+
+      expect(await within(dialog).findByText('novo-segredo')).toBeInTheDocument()
+    })
+  })
 })

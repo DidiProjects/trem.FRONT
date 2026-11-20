@@ -39,6 +39,18 @@ export interface ManagedUser {
   permissions: string[]
 }
 
+/** A service's login through trem.API (OpenID Connect). */
+export interface OidcClient {
+  /** "hub.<slug>". */
+  client_id: string
+  redirect_uris: string[]
+  secret_created_at: string
+  created_at: string
+  updated_at: string
+  /** Only when it was just created or rotated: trem.API keeps a hash. */
+  client_secret?: string
+}
+
 interface Page<T> {
   items: T[]
   total: number
@@ -84,6 +96,16 @@ export const hubApi = {
 
   revoke: (slug: string, userId: string) =>
     authRequest<Message>(`${at(slug)}/users/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
+
+  oidcClient: (slug: string) => authRequest<OidcClient>(`${at(slug)}/oidc`),
+
+  /** Creates the client (the answer carries the secret) or replaces its redirect URIs. */
+  configureOidc: (slug: string, redirectUris: string[]) =>
+    authRequest<OidcClient>(`${at(slug)}/oidc`, { method: 'PUT', body: { redirect_uris: redirectUris } }),
+
+  rotateOidcSecret: (slug: string) => authRequest<OidcClient>(`${at(slug)}/oidc/secret`, { method: 'POST' }),
+
+  removeOidc: (slug: string) => authRequest<Message>(`${at(slug)}/oidc`, { method: 'DELETE' }),
 
   /** Active accounts, the ones a service can be granted to. */
   activeUsers: () => authRequest<Page<ManagedUser>>('/admin/users?status=active&limit=200'),
