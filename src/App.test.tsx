@@ -48,6 +48,20 @@ describe('login', () => {
     expect(api.calls).toHaveLength(0)
   })
 
+  it('goes back to the page that asked for the login, query included', async () => {
+    fakeApi({
+      'POST /auth/login': () => json({ access_token: fakeToken(), must_change_password: false }),
+      'GET /me': () => json(ME),
+    })
+    const user = userEvent.setup()
+    open('/servicos?filtro=radarr')
+
+    await fillLogin(user)
+
+    expect(await screen.findByRole('heading', { name: 'Serviços do servidor' })).toBeInTheDocument()
+    expect(window.location.pathname + window.location.search).toBe('/servicos?filtro=radarr')
+  })
+
   it('logs in with the session cookie and shows only the granted services', async () => {
     const api = fakeApi({
       'POST /auth/login': () => json({ access_token: fakeToken(), must_change_password: false }),

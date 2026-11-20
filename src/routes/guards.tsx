@@ -16,7 +16,8 @@ export function RequireAuth() {
   const { status } = useAuth()
   const location = useLocation()
   if (status === 'loading' || status === 'unavailable') return <Pending />
-  if (status === 'anonymous') return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  // With the query: /sso?request=… must come back whole after the login.
+  if (status === 'anonymous') return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
   if (status === 'must-change-password') return <Navigate to="/change-password" replace />
   return <Outlet />
 }
@@ -36,11 +37,21 @@ export function RequireSession() {
   return <Outlet />
 }
 
+/** Where RequireAuth was headed, if it is a path of this app ("//host" would leave it). */
+function returnTo(state: unknown): string {
+  const from = (state as { from?: unknown } | null)?.from
+  return typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') && !from.startsWith('/login')
+    ? from
+    : '/'
+}
+
 /** Login, sign-up and forgot-password: nothing to do there with a session. */
 export function AnonymousOnly() {
   const { status } = useAuth()
+  const location = useLocation()
   if (status === 'loading' || status === 'unavailable') return <Pending />
   if (status === 'must-change-password') return <Navigate to="/change-password" replace />
-  if (status === 'authenticated') return <Navigate to="/" replace />
+  // The login ends here as soon as the session exists, so this is what takes it back.
+  if (status === 'authenticated') return <Navigate to={returnTo(location.state)} replace />
   return <Outlet />
 }
