@@ -8,3 +8,11 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# The login screen of the hub services (/sso) cannot be framed: a page that framed it could
+# get a click on "Continuar" without the person seeing what was approved.
+[[headers]]
+  for = "/sso"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'none'"
+    X-Frame-Options = "DENY"
