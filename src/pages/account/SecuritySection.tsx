@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from 'react'
+import { usesAuthentik } from '@/config/env'
+import { oidc } from '@/services/oidc'
 import { Link as RouterLink } from 'react-router'
 import { Alert, Box, Button, Chip, Stack, TextField, Typography } from '@mui/material'
 import { PasswordField } from '@/components/PasswordField'
@@ -190,6 +192,7 @@ function SecondFactor() {
 }
 
 export function SecuritySection() {
+  if (usesAuthentik()) return <AuthentikSecurity />
   return (
     <Stack spacing={3}>
       <SecondFactor />
@@ -203,6 +206,22 @@ export function SecuritySection() {
             Alterar senha
           </Button>
         </Box>
+      </Box>
+    </Stack>
+  )
+}
+
+/** With authentik, password and second factor are kept there. */
+function AuthentikSecurity() {
+  return (
+    <Stack spacing={1.5} sx={{ maxWidth: 560 }}>
+      <Typography>
+        Senha, verificação em duas etapas e sessões abertas ficam na sua conta do servidor de login.
+      </Typography>
+      <Box>
+        <Button variant="contained" href={oidc.accountUrl()} target="_blank" rel="noopener">
+          Abrir minha conta de login
+        </Button>
       </Box>
     </Stack>
   )

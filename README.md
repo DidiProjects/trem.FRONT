@@ -56,14 +56,23 @@ npm run build
   characters, not repetitive, without the username or e-mail). The API checks again,
   including known breaches, and its message shows on the field.
 
-## Login screen on authentik (`auth.didilv93.com`)
+## Login through authentik (`VITE_OIDC_ISSUER`)
 
-A second build, `npm run build:login` (`login.html`, `vite.login.config.ts`, `src/login/`),
-draws authentik's login flow with these screens: user and password, authenticator code,
-no access, back to the service. It is served by trem.AUTH's edge at `/if/flow/*`, next to
-authentik, because the flow state lives in authentik's session cookie; it talks only to
-authentik's flow executor (`/api/v3/flows/executor/...`), never to trem.API. trem.AUTH's
-deploy builds it from this repository and copies `dist-login/` to the server.
+With `VITE_OIDC_ISSUER` set (authentik's `trem` provider), the login moves to authentik
+(trem.AUTH): `/login` sends the browser there (authorization code + PKCE, public client
+`trem`), `/auth/callback` trades the code for tokens, and every trem.API call carries
+authentik's access token (trem.API needs the same issuer in `AUTHENTIK_ISSUER`).
+
+- `src/services/oidc.ts`: PKCE, code exchange, renewals, logout URL. The access token stays in
+  memory like before; the refresh token and id token live in `sessionStorage`, per tab, never
+  sent to trem.API. A new tab goes through authentik again, which answers at once while its
+  own session is alive.
+- `session.ts` keeps its single-flight renewals and cross-tab events; only the renewal, the
+  restore check and the logout switch to authentik. Logout ends authentik's session too
+  (end-session) and never resolves, so `/login` cannot log the user straight back in.
+- Account security (password, second factor, sessions) links to authentik's own page.
+
+Empty, the login is trem.API's, as before.
 
 ## Products and services
 
@@ -139,6 +148,7 @@ Repository configuration:
 | Kind | Name | Value |
 |---|---|---|
 | variable | `TREM_API_URL` | trem.API's origin, `https://api.didilv93.com` |
+| variable | `OIDC_ISSUER` | optional: authentik's `trem` provider, `https://auth.didilv93.com/application/o/trem/`; switches the login to authentik |
 | secret | `NETLIFY_AUTH_TOKEN` | Netlify personal access token |
 | secret | `NETLIFY_SITE_ID` | the site's ID |
 

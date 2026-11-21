@@ -13,7 +13,10 @@
  *   so anonymous visits do not call /auth/refresh.
  */
 import { ApiError, readJson, send, type RequestOptions } from './http'
+import { oidc } from './oidc'
+import { usesAuthentik } from '@/config/env'
 import { readClaims } from '@/utils/jwt'
+import { leaveTo } from '@/utils/leave'
 import { storage } from '@/utils/storage'
 
 export const CSRF_HEADER = { 'X-Requested-With': 'trem' }
@@ -67,6 +70,8 @@ function drop() {
 }
 
 async function callRefresh(): Promise<string | null> {
+  // With authentik the refresh token is this tab's own (sessionStorage), see oidc.ts.
+  if (usesAuthentik()) return oidc.refresh()
   const res = await send('/auth/refresh', { method: 'POST', headers: CSRF_HEADER })
   if (res.status === 401 || res.status === 403) return null
   const body = await readJson<RefreshResponse>(res)
@@ -84,7 +89,9 @@ export const session = {
   },
 
   hasStoredSession(): boolean {
-    return storage.get(FLAG) === '1'
+    // With authentik each tab holds its own refresh token: the shared flag would make a new
+    // tab try a renewal it cannot do, and its failure would wipe the flag for the others.
+    return usesAuthentik() ? oidc.hasSession() : storage.get(FLAG) === '1'
   },
 
   /** A login just returned an access token; the API set the refresh cookie. */
@@ -99,6 +106,16 @@ export const session = {
   },
 
   async logout() {
+    if (usesAuthentik()) {
+      const url = oidc.logoutUrl()
+      drop()
+      channel?.postMessage('logout')
+      leaveTo(url)
+      // The page is leaving for authentik's logout. Resolving would let the app mark the
+      // session anonymous and open /login, whose own redirect to authentik would cancel
+      // this navigation and log the user straight back in.
+      return new Promise<void>(() => undefined)
+    }
     try {
       await send('/auth/logout', { method: 'POST', headers: CSRF_HEADER })
     } finally {
