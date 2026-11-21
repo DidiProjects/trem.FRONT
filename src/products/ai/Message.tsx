@@ -31,7 +31,7 @@ export function Message({ message }: { message: ChatMessage }) {
     <Box component="li" sx={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}>
       <Box
         sx={[
-          { maxWidth: { xs: '92%', sm: '78%' }, px: 2, py: 1.5, borderRadius: '20px' },
+          { maxWidth: { xs: '92%', sm: '78%' }, minWidth: 0, px: 2, py: 1.5, borderRadius: '20px' },
           mine ? lifted : { bgcolor: 'background.paper', color: 'text.primary' },
         ]}
       >
