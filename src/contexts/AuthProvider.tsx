@@ -127,6 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearNotice = useCallback(() => setNotice(null), [])
   const clearPendingMfa = useCallback(() => setPendingMfa(null), [])
   const reloadUser = useCallback(() => loadUser().catch(() => undefined), [loadUser])
+  const acceptToken = useCallback(
+    async (accessToken: string) => {
+      await finish({ access_token: accessToken })
+    },
+    [finish],
+  )
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -142,8 +148,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearNotice,
       clearPendingMfa,
       reloadUser,
+      acceptToken,
     }),
-    [status, user, notice, pendingMfa, login, verifyMfa, changePassword, logout, retry, clearNotice, clearPendingMfa, reloadUser],
+    [
+      status,
+      user,
+      notice,
+      pendingMfa,
+      login,
+      verifyMfa,
+      changePassword,
+      logout,
+      retry,
+      clearNotice,
+      clearPendingMfa,
+      reloadUser,
+      acceptToken,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from '@/components/AppLayout'
 import { AccountPage } from '@/pages/AccountPage'
+import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
 import { ChangePasswordPage } from '@/pages/ChangePasswordPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { HomePage } from '@/pages/HomePage'
@@ -26,6 +27,7 @@ export function AppRoutes() {
       </Route>
 
       {/* E-mail links work with or without a session. */}
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 

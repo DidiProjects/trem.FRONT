@@ -32,6 +32,8 @@ export interface AuthContextValue {
   clearPendingMfa: () => void
   /** Reads /me again, after a change to the account (second factor, permissions). */
   reloadUser: () => Promise<void>
+  /** A login finished elsewhere (authentik's callback): start the session with its token. */
+  acceptToken: (accessToken: string) => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)
