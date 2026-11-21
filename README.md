@@ -56,6 +56,15 @@ npm run build
   characters, not repetitive, without the username or e-mail). The API checks again,
   including known breaches, and its message shows on the field.
 
+## Login screen on authentik (`auth.didilv93.com`)
+
+A second build, `npm run build:login` (`login.html`, `vite.login.config.ts`, `src/login/`),
+draws authentik's login flow with these screens: user and password, authenticator code,
+no access, back to the service. It is served by trem.AUTH's edge at `/if/flow/*`, next to
+authentik, because the flow state lives in authentik's session cookie; it talks only to
+authentik's flow executor (`/api/v3/flows/executor/...`), never to trem.API. trem.AUTH's
+deploy builds it from this repository and copies `dist-login/` to the server.
+
 ## Products and services
 
 Two kinds of things, kept apart in the menu, Home, Ctrl K and the admin:
