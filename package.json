@@ -9,6 +9,7 @@
   "scripts": {
     "start": "vite",
     "build": "tsc -b && vite build",
+    "build:login": "tsc -b && vite build -c vite.login.config.ts",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "lint": "eslint .",

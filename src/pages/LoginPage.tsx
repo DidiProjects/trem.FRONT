@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { usesAuthentik } from '@/config/env'
+import { AuthentikLogin } from './AuthentikLogin'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
 import { Alert, Button, Link, Stack, TextField } from '@mui/material'
 import { AuthLayout } from '@/components/AuthLayout'
@@ -23,7 +25,7 @@ function errorText(error: unknown, wait: number): string {
   return error instanceof Error ? error.message : 'Não foi possível entrar.'
 }
 
-export function LoginPage() {
+function PasswordLogin() {
   const { login, verifyMfa, notice, clearNotice, pendingMfa, clearPendingMfa } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -195,4 +197,8 @@ export function LoginPage() {
       </Stack>
     </AuthLayout>
   )
+}
+
+export function LoginPage() {
+  return usesAuthentik() ? <AuthentikLogin /> : <PasswordLogin />
 }
