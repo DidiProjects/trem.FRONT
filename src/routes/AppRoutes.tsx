@@ -8,6 +8,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { ServicesPage } from '@/pages/ServicesPage'
+import { SsoPage } from '@/pages/SsoPage'
 import { TasksPage } from '@/pages/TasksPage'
 import { VerifyEmailPage } from '@/pages/VerifyEmailPage'
 import { AdminAppsPage } from '@/pages/admin/AdminAppsPage'
@@ -34,6 +35,8 @@ export function AppRoutes() {
       </Route>
 
       <Route element={<RequireAuth />}>
+        {/* A service's login through trem.API: full page, outside the app's menu. */}
+        <Route path="/sso" element={<SsoPage />} />
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />
           <Route path="/servicos" element={<ServicesPage />} />

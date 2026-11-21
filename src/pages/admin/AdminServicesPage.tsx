@@ -24,17 +24,20 @@ import ArrowUpward from '@mui/icons-material/ArrowUpward'
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import GroupOutlined from '@mui/icons-material/GroupOutlined'
+import KeyOutlined from '@mui/icons-material/KeyOutlined'
 import { useSnackbar } from 'notistack'
 import { ServiceLogo } from '@/components/ServiceLogo'
 import { useLoad } from '@/hooks/useLoad'
 import { hubApi, logoSrc, type ManagedService } from '@/services/hubApi'
 import { ServiceAccessDialog } from './ServiceAccessDialog'
 import { ServiceFormDialog } from './ServiceFormDialog'
+import { ServiceSsoDialog } from './ServiceSsoDialog'
 
 type Open =
   | { kind: 'none' }
   | { kind: 'form'; service?: ManagedService }
   | { kind: 'access'; service: ManagedService }
+  | { kind: 'sso'; service: ManagedService }
   | { kind: 'delete'; service: ManagedService }
 
 export function AdminServicesPage() {
@@ -207,6 +210,14 @@ export function AdminServicesPage() {
                   >
                     Acesso
                   </Button>
+                  <Button
+                    size="small"
+                    startIcon={<KeyOutlined />}
+                    onClick={() => setOpen({ kind: 'sso', service })}
+                    aria-label={`Login único em ${service.name}`}
+                  >
+                    Login único
+                  </Button>
                   <Tooltip title="Editar">
                     <IconButton aria-label={`Editar ${service.name}`} onClick={() => setOpen({ kind: 'form', service })}>
                       <EditOutlined fontSize="small" />
@@ -241,6 +252,8 @@ export function AdminServicesPage() {
       )}
 
       {open.kind === 'access' && <ServiceAccessDialog service={open.service} onClose={() => setOpen({ kind: 'none' })} />}
+
+      {open.kind === 'sso' && <ServiceSsoDialog service={open.service} onClose={() => setOpen({ kind: 'none' })} />}
 
       {open.kind === 'delete' && (
         <Dialog open onClose={deleting ? undefined : () => setOpen({ kind: 'none' })} aria-labelledby={deleteTitleId}>
