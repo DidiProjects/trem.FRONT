@@ -1,6 +1,6 @@
 # trem.FRONT
 
-React + Vite + MUI 9. Login (trem.API), os **produtos** (ferramentas da trem.API, por grupo
+React + Vite + MUI 9. Login pelo authentik (trem.AUTH), os **produtos** (ferramentas da trem.API, por grupo
 e permissão, em `src/products/`), os **serviços** do servidor (catálogo de `/hub/services`)
 e a administração de aplicações, chaves e do catálogo (as contas ficam no authentik). Dev server na
 3004; o front chama a trem.API direto em `VITE_API_URL` (outro domínio, com CORS).
@@ -21,13 +21,13 @@ que é armadilha **deste** repositório.
 - **Node 22.14 local:** react-router 8 pede Node ≥ 22.22 e jsdom 30+ também. Ficamos no
   react-router 7 e no jsdom 29. TypeScript fica no 6.0 porque o typescript-eslint
   ainda não aceita o 7.
-- **Sem proxy de provedor.** O front fala com a trem.API no domínio dela: `fetch` com
-  `credentials: 'include'` (senão o cookie de sessão nem é gravado) e a origem do front em
-  `CORS_ORIGINS` da trem.API. Em produção o cookie é `SameSite=None; Partitioned`; em dev
-  (HTTP) é `Strict`, por isso `localhost` nos dois lados, nunca `127.0.0.1` de um e
-  `localhost` do outro: viram sites diferentes e o cookie não vai.
-- **Refresh nunca em paralelo.** A trem.API trata refresh token reapresentado como
-  roubo e derruba o login. Toda renovação passa por `refresh()` de `session.ts`.
+- **Sem proxy de provedor.** O front fala com a trem.API no domínio dela, com o token do
+  authentik no `Authorization` e a origem do front em `CORS_ORIGINS` da trem.API.
+- **Renovação nunca em paralelo.** O authentik troca o refresh token a cada renovação:
+  duas ao mesmo tempo derrubam a sessão da aba. Toda renovação passa por `refresh()` de
+  `session.ts`.
+- **Testes logam pelo authentik falso:** `storedSession()` põe o refresh token na aba e a
+  rota `RENEW` (`src/test/fakeApi.ts`) responde a renovação.
 - **A 1Password do Chrome intercepta digitação** nos campos de login durante testes com a
   extensão do Chrome: usar `form_input` em vez de `type`.
 

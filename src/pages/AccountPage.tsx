@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { Link as RouterLink, NavLink, Route, Routes } from 'react-router'
 import { Box, Chip, Divider, Link, Typography } from '@mui/material'
 import { PageHeader } from '@/components/PageHeader'
-import { usesAuthentik } from '@/config/env'
 import { useCatalog } from '@/contexts/catalogContext'
 import { useAuth } from '@/hooks/useAuth'
 import { groupVars } from '@/products/groupVars'
@@ -78,15 +77,6 @@ function Profile() {
           <Typography color="text.secondary">{catalog.result.state === 'loading' ? '…' : 'Nenhum'}</Typography>
         )}
       </Row>
-      {!usesAuthentik() && <Divider />}
-      {!usesAuthentik() && <Row label="Verificação em duas etapas">
-        <Typography>
-          {user.totp_enabled ? `Ligada · ${user.recovery_codes_left} códigos de recuperação restantes` : 'Desligada'}{' '}
-          <Link component={RouterLink} to="/account/seguranca">
-            {user.totp_enabled ? 'Gerenciar' : 'Ligar'}
-          </Link>
-        </Typography>
-      </Row>}
       <Typography variant="body2" color="text.secondary" sx={{ py: 1.5 }}>
         Precisa de outro produto ou serviço? <Link component={RouterLink} to="/account/feedback">Peça ao administrador</Link>.
       </Typography>

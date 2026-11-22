@@ -27,52 +27,30 @@ npm run build
 
 ## Authentication
 
+The login is authentik's (trem.AUTH): `/login` sends the browser there (authorization code +
+PKCE, public client `trem`), `/auth/callback` trades the code for tokens, and every trem.API
+call carries authentik's access token (trem.API checks it against the same issuer,
+`AUTHENTIK_ISSUER`). Accounts, passwords, second factor, sign-up and approval all live in
+authentik.
+
 | Piece | Where |
 |---|---|
+| PKCE, code exchange, renewals, logout URL | `src/services/oidc.ts` |
+| Session: access token in memory, renewal, tabs | `src/services/session.ts` |
 | HTTP and error parsing (field errors, `Retry-After`) | `src/services/http.ts` |
-| Session: access token in memory, refresh by cookie, renewal, tabs | `src/services/session.ts` |
-| trem.API calls | `src/services/authApi.ts` |
-| State and actions for the pages | `src/contexts/AuthProvider.tsx`, `useAuth()` |
+| State for the pages | `src/contexts/AuthProvider.tsx`, `useAuth()` |
 | Route guards | `src/routes/guards.tsx` |
+| The login screen authentik shows (second build, `npm run build:login`) | `src/login/` |
 
-- Login asks trem.API for `session: "cookie"`: the refresh token lives in an HttpOnly
-  cookie (path `/auth`), out of reach of JavaScript. trem.API is on another domain, so the
-  cookie is `SameSite=None; Partitioned` (CHIPS) and every call goes with
-  `credentials: "include"`. The access token (15 min) stays in memory only.
-- The session survives reloads: a flag without any secret in `localStorage` says a
-  restore is worth trying; the page then calls `POST /auth/refresh` once.
+- The access token stays in memory; the refresh token and id token live in
+  `sessionStorage`, per tab, never sent to trem.API. A new tab goes through authentik
+  again, which answers at once while its own session is alive.
 - The access token is renewed a minute before it expires, when a tab comes back from the
-  background, and once on any 401 (then the request is retried).
-- Refreshes are single flight in a tab and serialized across tabs with Web Locks: trem.API
-  rotates the refresh token and treats a reused one as theft, so two tabs refreshing at
-  once would end the login. Logout reaches the other tabs through `BroadcastChannel`.
-- Flows: login, TOTP or recovery code, provisional password (forced change), voluntary
-  change (logs in again with the new password, since trem.API ends every session),
-  sign-up with e-mail confirmation, forgot and reset password.
-- E-mail links arrive as `/#verify-email=<token>` and `/#reset-password=<token>`. The
-  token leaves the address bar and the history before the app renders and stays in memory.
-  trem.API writes the links to `FRONTEND_URL`, which must be this site's address.
-- Forms validate on blur and on submit with the same password policy as trem.API (12+
-  characters, not repetitive, without the username or e-mail). The API checks again,
-  including known breaches, and its message shows on the field.
-
-## Login through authentik (`VITE_OIDC_ISSUER`)
-
-With `VITE_OIDC_ISSUER` set (authentik's `trem` provider), the login moves to authentik
-(trem.AUTH): `/login` sends the browser there (authorization code + PKCE, public client
-`trem`), `/auth/callback` trades the code for tokens, and every trem.API call carries
-authentik's access token (trem.API needs the same issuer in `AUTHENTIK_ISSUER`).
-
-- `src/services/oidc.ts`: PKCE, code exchange, renewals, logout URL. The access token stays in
-  memory like before; the refresh token and id token live in `sessionStorage`, per tab, never
-  sent to trem.API. A new tab goes through authentik again, which answers at once while its
-  own session is alive.
-- `session.ts` keeps its single-flight renewals and cross-tab events; only the renewal, the
-  restore check and the logout switch to authentik. Logout ends authentik's session too
-  (end-session) and never resolves, so `/login` cannot log the user straight back in.
+  background, and once on any 401 (then the request is retried). Renewals are single
+  flight in a tab and serialized across tabs with Web Locks.
+- Logout ends authentik's session too (end-session) and never resolves, so `/login` cannot
+  log the user straight back in. It reaches the other tabs through `BroadcastChannel`.
 - Account security (password, second factor, sessions) links to authentik's own page.
-
-Empty, the login is trem.API's, as before.
 
 ## Products and services
 
@@ -94,7 +72,7 @@ Two kinds of things, kept apart in the menu, Home, Ctrl K and the admin:
 
 A group without its permission is not shown anywhere, and its routes explain how to ask
 for it (trem.API checks the permission again on every call). Other pages: `/servicos`,
-`/tarefas`, `/account/*` (profile, second factor, API keys, feedback),
+`/tarefas`, `/account/*` (profile, security link, API keys, feedback),
 `/admin/aplicacoes/*`, `/admin/services`.
 
 Navigation: a sidebar (a drawer below `md`), **Ctrl K** to jump to any product, service,
@@ -148,7 +126,7 @@ Repository configuration:
 | Kind | Name | Value |
 |---|---|---|
 | variable | `TREM_API_URL` | trem.API's origin, `https://api.didilv93.com` |
-| variable | `OIDC_ISSUER` | optional: authentik's `trem` provider, `https://auth.didilv93.com/application/o/trem/`; switches the login to authentik |
+| variable | `OIDC_ISSUER` | required: authentik's `trem` provider, `https://auth.didilv93.com/application/o/trem/` |
 | secret | `NETLIFY_AUTH_TOKEN` | Netlify personal access token |
 | secret | `NETLIFY_SITE_ID` | the site's ID |
 

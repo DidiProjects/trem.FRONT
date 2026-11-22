@@ -2,7 +2,6 @@ export interface AccessClaims {
   sub: string
   username: string
   exp: number
-  must_change_password?: boolean
   amr?: string[]
 }
 
