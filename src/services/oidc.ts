@@ -97,6 +97,11 @@ function keep(answer: TokenAnswer) {
 }
 
 export const oidc = {
+  /** Whether this tab started a login (an e-mail link opens the return in another tab). */
+  hasPendingLogin(): boolean {
+    return Boolean(session.get<Pending>(PENDING))
+  },
+
   hasSession(): boolean {
     return Boolean(session.get<Stored>(TOKENS)?.refreshToken)
   },
