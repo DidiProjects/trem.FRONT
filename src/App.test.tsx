@@ -165,6 +165,14 @@ describe('session', () => {
     expect(await screen.findByRole('heading', { name: 'Olá, ana' })).toBeInTheDocument()
   })
 
+  it('an account with nothing released yet is told it waits for approval', async () => {
+    localStorage.setItem('trem.session', '1')
+    fakeApi({ 'POST /auth/refresh': () => json({ access_token: fakeToken() }), 'GET /me': () => json({ ...ME, permissions: [] }) })
+    open('/')
+
+    expect(await screen.findByText(/libera o acesso depois de aprovar o cadastro/)).toBeInTheDocument()
+  })
+
   it('offers a retry when the API is unreachable', async () => {
     localStorage.setItem('trem.session', '1')
     fakeApi({ 'POST /auth/refresh': () => json({}, 503) })
