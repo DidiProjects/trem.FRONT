@@ -2,7 +2,7 @@
 
 React + Vite + MUI 9. Login (trem.API), os **produtos** (ferramentas da trem.API, por grupo
 e permissão, em `src/products/`), os **serviços** do servidor (catálogo de `/hub/services`)
-e a administração de contas, permissões e chaves. Dev server na
+e a administração de aplicações, chaves e do catálogo (as contas ficam no authentik). Dev server na
 3004; o front chama a trem.API direto em `VITE_API_URL` (outro domínio, com CORS).
 
 Regras gerais (autonomia, commits, testes, comentários) vivem em `~/.claude/`. Aqui só o

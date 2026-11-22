@@ -31,19 +31,6 @@ export interface ServiceFields {
   enabled: boolean
 }
 
-export interface ManagedUser {
-  id: string
-  username: string
-  email: string | null
-  status: string
-  permissions: string[]
-}
-
-interface Page<T> {
-  items: T[]
-  total: number
-}
-
 interface Message {
   message: string
 }
@@ -79,12 +66,4 @@ export const hubApi = {
 
   removeLogo: (slug: string) => authRequest<ManagedService>(`${at(slug)}/logo`, { method: 'DELETE' }),
 
-  grant: (slug: string, userId: string) =>
-    authRequest<Message>(`${at(slug)}/users/${encodeURIComponent(userId)}`, { method: 'PUT' }),
-
-  revoke: (slug: string, userId: string) =>
-    authRequest<Message>(`${at(slug)}/users/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
-
-  /** Active accounts, the ones a service can be granted to. */
-  activeUsers: () => authRequest<Page<ManagedUser>>('/admin/users?status=active&limit=200'),
 }
