@@ -102,6 +102,14 @@ describe('login through authentik', () => {
     expect(tokenCalls).toHaveLength(0)
   })
 
+  it('a callback this tab did not start (the e-mail link of the sign-up) starts a new login', async () => {
+    const { tokenCalls } = withAuthentik(fakeApi({}), () => json({}))
+    renderAt('/auth/callback?code=c1&state=from-another-tab')
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith(expect.stringContaining(`${AUTH}/application/o/authorize/`)))
+    expect(tokenCalls).toHaveLength(0)
+  })
+
   it('a reload renews the access token with the refresh token of this tab', async () => {
     sessionStorage.setItem(TOKENS, JSON.stringify({ refreshToken: 'r1', idToken: 'id1' }))
     const { tokenCalls } = withAuthentik(fakeApi({ 'GET /me': () => json(ME) }), () =>

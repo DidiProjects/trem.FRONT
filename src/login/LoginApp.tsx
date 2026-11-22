@@ -1,11 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Alert, Button, Link, Stack, TextField } from '@mui/material'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Alert, Button, Checkbox, FormControlLabel, Link, Stack, TextField, Typography } from '@mui/material'
 import { AuthLayout } from '@/components/AuthLayout'
 import { FullPageSpinner } from '@/components/FullPageStatus'
 import { PasswordField } from '@/components/PasswordField'
-import { authentikFlow, FLOW_ERROR, type Challenge } from '@/services/authentikFlow'
+import { authentikFlow, FLOW_ERROR, isExecutorUrl, type Challenge } from '@/services/authentikFlow'
 import { leaveTo } from '@/utils/leave'
 import { translate } from './messages'
+import { SignUpForm } from './SignUpForm'
 
 function firstError(challenge: Challenge, ...fields: string[]): string | undefined {
   for (const field of fields) {
@@ -23,6 +24,10 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
+  const [remember, setRemember] = useState(false)
+  // Each automatic step runs once per challenge, also under StrictMode's double effects:
+  // a second executor call would advance the flow twice.
+  const handled = useRef<Challenge | null>(null)
 
   useEffect(() => {
     let live = true
@@ -34,10 +39,6 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
       live = false
     }
   }, [slug, query])
-
-  useEffect(() => {
-    if (challenge?.component === 'xak-flow-redirect' && challenge.to) leaveTo(challenge.to)
-  }, [challenge])
 
   const send = async (event: FormEvent, body: Record<string, unknown>) => {
     event.preventDefault()
@@ -58,7 +59,31 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
     }
   }
 
-  if (!challenge || challenge.component === 'xak-flow-redirect') {
+  // authentik asks "stay signed in?" as its own step after the password and the code; the
+  // answer was already given with the checkbox next to the password.
+  const askedToRemember = challenge?.component === 'ak-stage-user-login'
+  useEffect(() => {
+    if (!challenge || handled.current === challenge) return
+    if (challenge.component === 'xak-flow-redirect' && challenge.to) {
+      handled.current = challenge
+      // Back from an e-mail link the flow goes on in the executor, not in another page.
+      if (isExecutorUrl(challenge.to)) {
+        authentikFlow
+          .follow(challenge.to)
+          .then(setChallenge)
+          .catch(() => setFailure(FLOW_ERROR))
+      } else leaveTo(challenge.to)
+    } else if (askedToRemember) {
+      handled.current = challenge
+      authentikFlow
+        .submit(slug, query, { component: challenge.component, remember_me: remember })
+        .then(setChallenge)
+        .catch(() => setFailure(FLOW_ERROR))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per challenge
+  }, [challenge])
+
+  if (!challenge || challenge.component === 'xak-flow-redirect' || askedToRemember) {
     return failure ? (
       <AuthLayout title="Entrar">
         <Alert severity="error">{failure}</Alert>
@@ -73,16 +98,35 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
     ? `Use sua conta do trem para continuar em ${app}.`
     : 'Use sua conta do trem para acessar os serviços do servidor.'
   const cancel = challenge.flow_info?.cancel_url
+  const loginHref = `/if/flow/default-authentication-flow/?${query}`
   const otherAccount = cancel && (
     <Link href={cancel} variant="body2" sx={{ textAlign: 'center' }}>
       Entrar com outra conta
     </Link>
   )
 
+  const rememberBox = (
+    <FormControlLabel
+      control={<Checkbox checked={remember} onChange={(e) => setRemember(e.target.checked)} />}
+      label="Manter conectado"
+      sx={{ mt: -1 }}
+    />
+  )
+
   if (challenge.component === 'ak-stage-identification') {
     const error = firstError(challenge, 'non_field_errors', 'password')
     return (
-      <AuthLayout title="Entrar" subtitle={subtitle}>
+      <AuthLayout
+        title="Entrar"
+        subtitle={subtitle}
+        footer={
+          challenge.enroll_url && (
+            <>
+              Não tem conta? <Link href={challenge.enroll_url}>Criar conta</Link>
+            </>
+          )
+        }
+      >
         <Stack
           component="form"
           spacing={2.5}
@@ -108,6 +152,7 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
               onChange={(e) => setPassword(e.target.value)}
             />
           )}
+          {rememberBox}
           <Button type="submit" variant="contained" size="large" loading={busy} disabled={!username.trim()}>
             Entrar
           </Button>
@@ -130,6 +175,7 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          {rememberBox}
           <Button type="submit" variant="contained" size="large" loading={busy} disabled={!password}>
             Entrar
           </Button>
@@ -174,6 +220,44 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
             Verificar
           </Button>
           {otherAccount}
+        </Stack>
+      </AuthLayout>
+    )
+  }
+
+  if (challenge.component === 'ak-stage-prompt') {
+    return (
+      <SignUpForm
+        challenge={challenge}
+        busy={busy}
+        failure={failure}
+        loginHref={loginHref}
+        onSubmit={(e, values) => send(e, values)}
+      />
+    )
+  }
+
+  if (challenge.component === 'ak-stage-email') {
+    return (
+      <AuthLayout title="Confira seu e-mail">
+        <Stack spacing={2}>
+          <Typography>Enviamos um link de confirmação para o seu e-mail. Ele vale por 24 horas.</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Não chegou? Confira a caixa de spam. Depois da confirmação, o administrador libera os serviços da sua conta.
+          </Typography>
+        </Stack>
+      </AuthLayout>
+    )
+  }
+
+  if (challenge.component === 'ak-stage-consent') {
+    return (
+      <AuthLayout title="Confirmar e-mail" subtitle={translate(challenge.header_text)}>
+        <Stack component="form" spacing={2.5} noValidate onSubmit={(e) => send(e, { token: challenge.token })}>
+          {failure && <Alert severity="error">{failure}</Alert>}
+          <Button type="submit" variant="contained" size="large" loading={busy}>
+            Confirmar e ativar a conta
+          </Button>
         </Stack>
       </AuthLayout>
     )

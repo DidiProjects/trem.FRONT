@@ -7,10 +7,13 @@ import { useAuth } from '@/hooks/useAuth'
 import { oidc } from '@/services/oidc'
 
 // The code is single use: StrictMode's second effect must reuse the first exchange.
-let exchange: { search: string; result: ReturnType<typeof oidc.complete> } | null = null
+let exchange: { search: string; result: Promise<Awaited<ReturnType<typeof oidc.complete>> | null> } | null = null
 
 function complete(search: string) {
-  if (exchange?.search !== search) exchange = { search, result: oidc.complete(search) }
+  // No login started in this tab: the return of a flow finished elsewhere (the sign-up's e-mail
+  // link). Its code is useless without this tab's verifier; a new login passes straight through
+  // while authentik's session is alive.
+  if (exchange?.search !== search) exchange = { search, result: oidc.hasPendingLogin() ? oidc.complete(search) : Promise.resolve(null) }
   return exchange.result
 }
 
@@ -24,9 +27,13 @@ export function AuthCallbackPage() {
   useEffect(() => {
     let live = true
     complete(search)
-      .then(async ({ accessToken, returnTo }) => {
-        await acceptToken(accessToken)
-        if (live) navigate(returnTo, { replace: true })
+      .then(async (done) => {
+        if (!done) {
+          if (live) navigate('/login', { replace: true })
+          return
+        }
+        await acceptToken(done.accessToken)
+        if (live) navigate(done.returnTo, { replace: true })
       })
       .catch((err: unknown) => live && setError(err instanceof Error ? err.message : 'Não foi possível entrar.'))
     return () => {
