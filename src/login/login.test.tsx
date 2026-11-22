@@ -95,6 +95,31 @@ describe('trem login screen on authentik (/if/flow/:slug)', () => {
     expect(posts.at(-1)).toEqual({ component: 'ak-stage-authenticator-validate', code: '123456' })
   })
 
+  it.each([
+    [true, 'checked'],
+    [false, 'left unchecked'],
+  ])("answers authentik's stay-signed-in step with %s when the box is %s", async (remember) => {
+    const { posts } = fakeAuthentik((body) => {
+      if (!body) return IDENTIFY
+      return body.component === 'ak-stage-identification'
+        ? { component: 'ak-stage-user-login', flow_info: {} }
+        : { component: 'xak-flow-redirect', to: BACK }
+    })
+    open()
+
+    await userEvent.type(await screen.findByLabelText('Usuário'), 'ana')
+    await userEvent.click(screen.getByLabelText('Senha', { selector: 'input' }))
+    await userEvent.paste('segredo')
+    if (remember) await userEvent.click(screen.getByLabelText('Manter conectado'))
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith(BACK))
+    expect(posts).toEqual([
+      { component: 'ak-stage-identification', uid_field: 'ana', password: 'segredo' },
+      { component: 'ak-stage-user-login', remember_me: remember },
+    ])
+  })
+
   it('an account without the service is told so', async () => {
     fakeAuthentik(() => ({ component: 'ak-stage-access-denied', application_pre: 'Didiflix', error_message: 'Request has been denied.' }))
     open()
