@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
-import { Box, IconButton, Link, Stack, Typography } from '@mui/material'
+import { Alert, Box, IconButton, Link, Stack, Typography } from '@mui/material'
 import Close from '@mui/icons-material/Close'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import { FileDrop } from '@/components/FileDrop'
@@ -30,6 +30,11 @@ export function HomePage() {
           title={`Olá, ${user?.username ?? ''}`}
           subtitle={groups.length ? 'Solte um arquivo e eu mostro o que dá para fazer com ele.' : 'Serviços do servidor liberados para a sua conta.'}
         />
+        {user && user.permissions.length === 0 && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Sua conta ainda não tem serviços liberados. O administrador libera o acesso depois de aprovar o cadastro.
+          </Alert>
+        )}
         {groups.length > 0 && (dropped ? <Suggestions file={dropped} groups={groups} onClear={() => setDropped(null)} /> : (
           <FileDrop
             compact
