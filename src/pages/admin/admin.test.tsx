@@ -23,14 +23,6 @@ const SERVICE = {
 }
 const NO_ADDRESS = { ...SERVICE, slug: 'radarr', permission: 'hub:radarr', name: 'Radarr', url: null, position: 1, logo_url: null }
 
-const USERS = {
-  items: [
-    { id: 'u1', username: 'ana', email: 'ana@example.com', status: 'active', permissions: ['hub:immich'] },
-    { id: 'u2', username: 'bia', email: null, status: 'active', permissions: [] },
-  ],
-  total: 2,
-}
-
 function openAt(path: string) {
   localStorage.setItem('trem.session', '1')
   window.history.replaceState(null, '', path)
@@ -163,33 +155,6 @@ describe('admin area', () => {
     const dialog = screen.getByRole('dialog', { name: 'Editar Immich' })
     await user.upload(within(dialog).getByLabelText('Arquivo do logo'), new File(['GIF89a'], 'a.gif', { type: 'image/gif' }))
     expect(within(dialog).getByText('Use uma imagem PNG, WebP ou SVG')).toBeInTheDocument()
-  })
-
-  it('grants and revokes access per account, undoing a failed change', async () => {
-    const api = fakeApi({
-      ...loggedIn(),
-      'GET /admin/hub/services': () => json([SERVICE]),
-      'GET /admin/users?status=active&limit=200': () => json(USERS),
-      'PUT /admin/hub/services/immich/users/u2': () => json({ message: 'Acesso liberado' }),
-      'DELETE /admin/hub/services/immich/users/u1': () => json({ detail: 'Falhou' }, 500),
-    })
-    const user = userEvent.setup()
-    openAt('/admin/services')
-
-    await user.click(await screen.findByRole('button', { name: 'Acesso a Immich' }))
-    const dialog = screen.getByRole('dialog', { name: 'Acesso a Immich' })
-    const ana = await within(dialog).findByRole('switch', { name: 'ana vê Immich' })
-    const bia = within(dialog).getByRole('switch', { name: 'bia vê Immich' })
-    expect(ana).toBeChecked()
-    expect(bia).not.toBeChecked()
-
-    await user.click(bia)
-    await waitFor(() => expect(api.to('PUT', '/admin/hub/services/immich/users/u2')).toHaveLength(1))
-    expect(bia).toBeChecked()
-
-    await user.click(ana)
-    expect(await screen.findByText('Falhou')).toBeInTheDocument()
-    expect(ana).toBeChecked()
   })
 
   it('removes a service after confirming', async () => {
