@@ -11,14 +11,13 @@ function Pending() {
   return <FullPageSpinner />
 }
 
-/** Logged in with a password of their own. */
+/** Logged in. */
 export function RequireAuth() {
   const { status } = useAuth()
   const location = useLocation()
   if (status === 'loading' || status === 'unavailable') return <Pending />
   // With the query: /sso?request=… must come back whole after the login.
   if (status === 'anonymous') return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
-  if (status === 'must-change-password') return <Navigate to="/change-password" replace />
   return <Outlet />
 }
 
@@ -26,14 +25,6 @@ export function RequireAuth() {
 export function RequireAdmin() {
   const { user } = useAuth()
   if (!isAdmin(user?.permissions)) return <Navigate to="/" replace />
-  return <Outlet />
-}
-
-/** Logged in, including with a provisional password (the change-password page). */
-export function RequireSession() {
-  const { status } = useAuth()
-  if (status === 'loading' || status === 'unavailable') return <Pending />
-  if (status === 'anonymous') return <Navigate to="/login" replace />
   return <Outlet />
 }
 
@@ -45,12 +36,11 @@ function returnTo(state: unknown): string {
     : '/'
 }
 
-/** Login, sign-up and forgot-password: nothing to do there with a session. */
+/** The login page: nothing to do there with a session. */
 export function AnonymousOnly() {
   const { status } = useAuth()
   const location = useLocation()
   if (status === 'loading' || status === 'unavailable') return <Pending />
-  if (status === 'must-change-password') return <Navigate to="/change-password" replace />
   // The login ends here as soon as the session exists, so this is what takes it back.
   if (status === 'authenticated') return <Navigate to={returnTo(location.state)} replace />
   return <Outlet />

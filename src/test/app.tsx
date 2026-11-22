@@ -1,11 +1,11 @@
 import { StrictMode } from 'react'
 import { render } from '@testing-library/react'
 import App from '@/App'
-import { ME, fakeToken, json } from './fakeApi'
+import { ME, RENEW, json, renewed, storedSession } from './fakeApi'
 
 /** Renders the whole app at `path` with a stored session, as after a reload. */
 export function openAt(path: string) {
-  localStorage.setItem('trem.session', '1')
+  storedSession()
   window.history.replaceState(null, '', path)
   return render(
     <StrictMode>
@@ -18,7 +18,7 @@ export function openAt(path: string) {
 export function loggedIn(...permissions: string[]) {
   const me = { ...ME, permissions: [...ME.permissions, ...permissions] }
   return {
-    'POST /auth/refresh': () => json({ access_token: fakeToken() }),
+    [RENEW]: renewed,
     'GET /me': () => json(me),
   }
 }

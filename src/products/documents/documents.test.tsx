@@ -4,12 +4,12 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '@/App'
 import { session } from '@/services/session'
-import { ME, fakeApi, fakeToken, json } from '@/test/fakeApi'
+import { ME, RENEW, fakeApi, json, renewed, storedSession } from '@/test/fakeApi'
 
 const EDITOR = { ...ME, permissions: [...ME.permissions, 'trem:file_editor'] }
 
 function openAt(path: string) {
-  localStorage.setItem('trem.session', '1')
+  storedSession()
   window.history.replaceState(null, '', path)
   return render(
     <StrictMode>
@@ -19,7 +19,7 @@ function openAt(path: string) {
 }
 
 const loggedIn = (me = EDITOR) => ({
-  'POST /auth/refresh': () => json({ access_token: fakeToken() }),
+  [RENEW]: renewed,
   'GET /me': () => json(me),
 })
 

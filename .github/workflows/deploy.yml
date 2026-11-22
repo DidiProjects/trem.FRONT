@@ -24,10 +24,11 @@ jobs:
       - name: Build
         env:
           VITE_API_URL: ${{ vars.TREM_API_URL }}
-          # Empty keeps trem.API's own login; set it to switch the login to authentik.
+          # authentik's trem provider: the only login.
           VITE_OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}
         run: |
           [[ "$VITE_API_URL" == https://* ]] || { echo "Repository variable TREM_API_URL must be trem.API's https origin"; exit 1; }
+          [[ "$VITE_OIDC_ISSUER" == https://* ]] || { echo "Repository variable OIDC_ISSUER must be authentik's trem issuer"; exit 1; }
           npm run build
 
       - name: Deploy

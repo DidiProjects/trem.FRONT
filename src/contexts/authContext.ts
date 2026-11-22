@@ -1,38 +1,23 @@
 import { createContext } from 'react'
-import type { Me, SecondFactor } from '@/services/authApi'
+import type { Me } from '@/services/authApi'
 
 export type AuthStatus =
-  | 'loading' // restoring the session from the cookie
+  | 'loading' // restoring the session with this tab's refresh token
   | 'anonymous'
-  | 'must-change-password' // logged in with a provisional or expired password
   | 'authenticated'
   | 'unavailable' // the API could not be reached while restoring
-
-/** What a login step produced: the session, or a request for the second factor. */
-export type LoginResult = { kind: 'done' } | { kind: 'mfa'; mfaToken: string }
-
-export interface PendingMfa {
-  mfaToken: string
-  message: string
-}
 
 export interface AuthContextValue {
   status: AuthStatus
   user: Me | null
   /** Why the last session ended without the user asking, to show on the login page. */
   notice: string | null
-  /** A second-factor step the login page must resume (after a password change). */
-  pendingMfa: PendingMfa | null
-  login: (username: string, password: string) => Promise<LoginResult>
-  verifyMfa: (mfaToken: string, factor: SecondFactor) => Promise<LoginResult>
-  changePassword: (current: string, next: string) => Promise<void>
   logout: () => Promise<void>
   retry: () => void
   clearNotice: () => void
-  clearPendingMfa: () => void
-  /** Reads /me again, after a change to the account (second factor, permissions). */
+  /** Reads /me again, after a change to the account. */
   reloadUser: () => Promise<void>
-  /** A login finished elsewhere (authentik's callback): start the session with its token. */
+  /** A login finished at authentik (the callback): start the session with its token. */
   acceptToken: (accessToken: string) => Promise<void>
 }
 

@@ -43,6 +43,7 @@ describe('request', () => {
     expect(init.headers['Content-Type']).toBe('application/json')
     expect(init.body).toBe('{"a":1}')
     expect(fetchMock.mock.calls[0][0]).toBe(`${env.apiUrl}/x`)
-    expect(init.credentials).toBe('include')
+    // No cookie travels to trem.API any more: the Bearer token is the whole login.
+    expect(init.credentials).toBeUndefined()
   })
 })
