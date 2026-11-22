@@ -25,7 +25,7 @@ import { groupVars } from '@/products/groupVars'
 import { groupById } from '@/products/registry'
 import { linkedinApi, type Effort, type JobConfig, type ScraperJob, type Weekday } from '@/services/linkedinApi'
 import { TermBuilder } from './TermBuilder'
-import { fromKeywords, MAX_QUERY, toQuery, type Groups } from './terms'
+import { fromKeywords, MAX_QUERY, MAX_TERMS, termCount, toQuery, type Rows } from './terms'
 
 const DAYS: { value: Weekday; label: string }[] = [
   { value: 'mon', label: 'Seg' },
@@ -41,9 +41,9 @@ const lines = (text: string) => text.split('\n').map((s) => s.trim()).filter(Boo
 
 interface Values {
   name: string
-  jobTerms: Groups
+  jobKeywords: string
   locations: string
-  postTerms: Groups
+  postTerms: Rows
   criteria: string
   days: Weekday[]
   times: string
@@ -61,7 +61,7 @@ function initial(job: ScraperJob | null, email: string | null): Values {
   const c = job?.config
   return {
     name: c?.name ?? '',
-    jobTerms: fromKeywords(c?.jobs.keywords ?? []),
+    jobKeywords: c?.jobs.keywords.join('\n') ?? '',
     locations: c?.jobs.locations.join('\n') ?? '',
     postTerms: fromKeywords(c?.posts.keywords ?? []),
     criteria: c?.analysis.criteria ?? '',
@@ -78,17 +78,17 @@ function initial(job: ScraperJob | null, email: string | null): Values {
   }
 }
 
-// The builder makes one expression, so one LinkedIn search per location instead of one per term.
-const keywords = (groups: Groups) => {
-  const query = toQuery(groups)
+// The builder makes one expression: one LinkedIn post search instead of one per term.
+const postKeywords = (rows: Rows) => {
+  const query = toQuery(rows)
   return query ? [query] : []
 }
 
 function toConfig(v: Values): JobConfig {
   return {
     name: v.name.trim(),
-    jobs: { keywords: keywords(v.jobTerms), locations: lines(v.locations), max_pages: Number(v.maxPages) },
-    posts: { keywords: keywords(v.postTerms), max_scrolls: Number(v.maxScrolls) },
+    jobs: { keywords: lines(v.jobKeywords), locations: lines(v.locations), max_pages: Number(v.maxPages) },
+    posts: { keywords: postKeywords(v.postTerms), max_scrolls: Number(v.maxScrolls) },
     analysis: { criteria: v.criteria.trim(), min_score: Number(v.minScore), max_items: Number(v.maxItems), effort: v.effort },
     schedule: { timezone: v.timezone.trim(), days: v.days, times: v.times.split(',').map((s) => s.trim()).filter(Boolean) },
     notify_to: v.notify.trim(),
@@ -112,17 +112,18 @@ export function JobFormDialog({ job, email, onClose, onSaved }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const set = <K extends keyof Values>(key: K) => (value: Values[K]) => setV((prev) => ({ ...prev, [key]: value }))
-  const jobQuery = toQuery(v.jobTerms)
   const postQuery = toQuery(v.postTerms)
   const missing = !v.name.trim()
     ? 'Dê um nome à busca.'
-    : !jobQuery && !postQuery
+    : !lines(v.jobKeywords).length && !postQuery
       ? 'Informe ao menos um termo de vaga ou de post.'
-      : jobQuery.length > MAX_QUERY || postQuery.length > MAX_QUERY
-        ? `Cada busca tem no máximo ${MAX_QUERY} caracteres.`
-        : !v.days.length
-          ? 'Escolha ao menos um dia.'
-          : null
+      : termCount(v.postTerms) > MAX_TERMS
+        ? `A busca de posts lê no máximo ${MAX_TERMS} termos.`
+        : postQuery.length > MAX_QUERY
+          ? `A busca de posts tem no máximo ${MAX_QUERY} caracteres.`
+          : !v.days.length
+            ? 'Escolha ao menos um dia.'
+            : null
 
   const save = async () => {
     setSaving(true)
@@ -167,23 +168,23 @@ export function JobFormDialog({ job, email, onClose, onSaved }: Props) {
             O que procurar
           </Typography>
           {field('name', 'Nome da busca', { placeholder: 'Frontend no Reino Unido', required: true, autoFocus: true })}
-          <TermBuilder
-            label="Termos de vagas"
-            helper="O que a vaga precisa ter."
-            placeholder="react"
-            groups={v.jobTerms}
-            onChange={set('jobTerms')}
-          />
-          {field('locations', 'Locais', {
-            multiline: true,
-            minRows: 2,
-            helperText: 'Um por linha, nome completo: United Kingdom (UK vira Ucrânia). Cada local é uma busca.',
-          })}
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { sm: '1fr 1fr' } }}>
+            {field('jobKeywords', 'Termos de vagas', {
+              multiline: true,
+              minRows: 3,
+              helperText: 'Um por linha, cada um é uma busca. A busca de vagas do LinkedIn é por IA e ignora AND/OR: escreva como frase, ex.: senior react developer.',
+            })}
+            {field('locations', 'Locais', {
+              multiline: true,
+              minRows: 3,
+              helperText: 'Um por linha, nome completo: United Kingdom (UK vira Ucrânia). Cada local é uma busca.',
+            })}
+          </Box>
           <TermBuilder
             label="Termos de posts"
             helper="Posts de recrutadores. A busca de posts não filtra local: ponha o local como um grupo."
             placeholder="hiring"
-            groups={v.postTerms}
+            rows={v.postTerms}
             onChange={set('postTerms')}
           />
           {field('criteria', 'O que você procura, em poucas frases', {
