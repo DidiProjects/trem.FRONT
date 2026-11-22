@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Alert, Button, Link, Stack, TextField } from '@mui/material'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Alert, Button, Checkbox, FormControlLabel, Link, Stack, TextField } from '@mui/material'
 import { AuthLayout } from '@/components/AuthLayout'
 import { FullPageSpinner } from '@/components/FullPageStatus'
 import { PasswordField } from '@/components/PasswordField'
@@ -23,6 +23,8 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
+  const [remember, setRemember] = useState(false)
+  const answered = useRef<Challenge | null>(null)
 
   useEffect(() => {
     let live = true
@@ -39,8 +41,8 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
     if (challenge?.component === 'xak-flow-redirect' && challenge.to) leaveTo(challenge.to)
   }, [challenge])
 
-  const send = async (event: FormEvent, body: Record<string, unknown>) => {
-    event.preventDefault()
+  const send = async (event: FormEvent | null, body: Record<string, unknown>) => {
+    event?.preventDefault()
     if (!challenge) return
     setBusy(true)
     setFailure(null)
@@ -58,7 +60,17 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
     }
   }
 
-  if (!challenge || challenge.component === 'xak-flow-redirect') {
+  // authentik asks "stay signed in?" as its own step after the password and the code; the
+  // answer was already given with the checkbox next to the password.
+  const askedToRemember = challenge?.component === 'ak-stage-user-login'
+  useEffect(() => {
+    if (!askedToRemember || answered.current === challenge) return
+    answered.current = challenge
+    void send(null, { remember_me: remember })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per challenge
+  }, [challenge])
+
+  if (!challenge || challenge.component === 'xak-flow-redirect' || askedToRemember) {
     return failure ? (
       <AuthLayout title="Entrar">
         <Alert severity="error">{failure}</Alert>
@@ -77,6 +89,14 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
     <Link href={cancel} variant="body2" sx={{ textAlign: 'center' }}>
       Entrar com outra conta
     </Link>
+  )
+
+  const rememberBox = (
+    <FormControlLabel
+      control={<Checkbox checked={remember} onChange={(e) => setRemember(e.target.checked)} />}
+      label="Manter conectado"
+      sx={{ mt: -1 }}
+    />
   )
 
   if (challenge.component === 'ak-stage-identification') {
@@ -108,6 +128,7 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
               onChange={(e) => setPassword(e.target.value)}
             />
           )}
+          {rememberBox}
           <Button type="submit" variant="contained" size="large" loading={busy} disabled={!username.trim()}>
             Entrar
           </Button>
@@ -130,6 +151,7 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          {rememberBox}
           <Button type="submit" variant="contained" size="large" loading={busy} disabled={!password}>
             Entrar
           </Button>
