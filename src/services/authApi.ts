@@ -4,7 +4,6 @@ export interface Me {
   id: string
   username: string
   email: string | null
-  status: string
   permissions: string[]
 }
 

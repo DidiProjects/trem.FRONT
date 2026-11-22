@@ -77,7 +77,6 @@ export const ME = {
   id: '1',
   username: 'ana',
   email: 'ana@example.com',
-  status: 'active',
   permissions: ['trem:ai', 'hub:radarr', 'hub:immich'],
 }
 
