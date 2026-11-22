@@ -1,36 +1,23 @@
 /**
- * The login session: the access token lives only in memory, the refresh token in the
- * HttpOnly cookie trem.API sets on /auth (unreachable from JavaScript). trem.API is on
- * another domain; the cookie is partitioned to this site (SameSite=None; Partitioned).
+ * The login session. The access token lives only in memory; the refresh token in this tab's
+ * sessionStorage (oidc.ts), renewed at authentik.
  *
- * - One refresh at a time per tab (single flight) and across tabs (Web Locks). The API
- *   rotates the refresh token and treats a reused one as theft: two tabs presenting the
- *   same cookie at once would end the login for both.
+ * - One renewal at a time per tab (single flight) and across tabs (Web Locks).
  * - The access token is renewed a minute before it expires, and again when the tab
  *   comes back from the background with a token close to expiring.
  * - Logout and login are announced to the other tabs (BroadcastChannel).
- * - A flag without any secret in localStorage says whether a restore is worth trying,
- *   so anonymous visits do not call /auth/refresh.
  */
 import { ApiError, readJson, send, type RequestOptions } from './http'
 import { oidc } from './oidc'
-import { usesAuthentik } from '@/config/env'
 import { readClaims } from '@/utils/jwt'
 import { leaveTo } from '@/utils/leave'
-import { storage } from '@/utils/storage'
 
-export const CSRF_HEADER = { 'X-Requested-With': 'trem' }
-const FLAG = 'trem.session'
 const LOCK = 'trem.refresh'
 const CHANNEL = 'trem.auth'
 const RENEW_BEFORE_MS = 60_000
 const RETRY_AFTER_FAILURE_MS = 30_000
 
 export type SessionEvent = 'ended' | 'logged-out-elsewhere' | 'logged-in-elsewhere'
-
-interface RefreshResponse {
-  access_token?: string
-}
 
 let accessToken: string | null = null
 let inflight: Promise<string | null> | null = null
@@ -59,28 +46,17 @@ function schedule(token: string) {
 
 function setToken(token: string) {
   accessToken = token
-  storage.set(FLAG, '1')
   schedule(token)
 }
 
 function drop() {
   clearTimeout(timer)
   accessToken = null
-  storage.remove(FLAG)
-}
-
-async function callRefresh(): Promise<string | null> {
-  // With authentik the refresh token is this tab's own (sessionStorage), see oidc.ts.
-  if (usesAuthentik()) return oidc.refresh()
-  const res = await send('/auth/refresh', { method: 'POST', headers: CSRF_HEADER })
-  if (res.status === 401 || res.status === 403) return null
-  const body = await readJson<RefreshResponse>(res)
-  return body.access_token ?? null
 }
 
 function lockedRefresh(): Promise<string | null> {
   const locks = typeof navigator === 'undefined' ? undefined : navigator.locks
-  return locks?.request ? locks.request(LOCK, callRefresh) : callRefresh()
+  return locks?.request ? locks.request(LOCK, oidc.refresh) : oidc.refresh()
 }
 
 export const session = {
@@ -89,39 +65,29 @@ export const session = {
   },
 
   hasStoredSession(): boolean {
-    // With authentik each tab holds its own refresh token: the shared flag would make a new
-    // tab try a renewal it cannot do, and its failure would wipe the flag for the others.
-    return usesAuthentik() ? oidc.hasSession() : storage.get(FLAG) === '1'
+    return oidc.hasSession()
   },
 
-  /** A login just returned an access token; the API set the refresh cookie. */
+  /** A login just returned an access token. */
   start(token: string) {
     setToken(token)
     channel?.postMessage('login')
   },
 
-  /** Forgets the session locally without telling other tabs (they share the cookie). */
+  /** Forgets the session locally without telling other tabs. */
   forget() {
     drop()
   },
 
-  async logout() {
-    if (usesAuthentik()) {
-      const url = oidc.logoutUrl()
-      drop()
-      channel?.postMessage('logout')
-      leaveTo(url)
-      // The page is leaving for authentik's logout. Resolving would let the app mark the
-      // session anonymous and open /login, whose own redirect to authentik would cancel
-      // this navigation and log the user straight back in.
-      return new Promise<void>(() => undefined)
-    }
-    try {
-      await send('/auth/logout', { method: 'POST', headers: CSRF_HEADER })
-    } finally {
-      drop()
-      channel?.postMessage('logout')
-    }
+  logout() {
+    const url = oidc.logoutUrl()
+    drop()
+    channel?.postMessage('logout')
+    leaveTo(url)
+    // The page is leaving for authentik's logout. Resolving would let the app mark the
+    // session anonymous and open /login, whose own redirect to authentik would cancel
+    // this navigation and log the user straight back in.
+    return new Promise<void>(() => undefined)
   },
 
   subscribe(listener: (event: SessionEvent) => void): () => void {
@@ -131,8 +97,8 @@ export const session = {
 }
 
 /**
- * A new access token from the cookie, or null when the session is over. Network and
- * server failures throw: they say nothing about the session.
+ * A new access token, or null when the session is over. Network and server failures
+ * throw: they say nothing about the session.
  */
 export function refresh(): Promise<string | null> {
   inflight ??= lockedRefresh()

@@ -68,9 +68,6 @@ export async function send(path: string, options: RequestOptions = {}): Promise<
       method: options.method ?? 'GET',
       headers,
       body: options.body === undefined ? undefined : raw ? (options.body as BodyInit) : JSON.stringify(options.body),
-      // trem.API is on another domain: without it the session cookie is neither stored
-      // from the login response nor sent on /auth/refresh.
-      credentials: 'include',
     })
   } catch {
     throw new ApiError(NETWORK_ERROR, 0)

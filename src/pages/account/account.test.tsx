@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { session } from '@/services/session'
 import { loggedIn, openAt } from '@/test/app'
-import { ME, fakeApi, fakeToken, json } from '@/test/fakeApi'
+import { ME, RENEW, fakeApi, json, renewed } from '@/test/fakeApi'
 
 afterEach(() => session.forget())
 
@@ -21,39 +21,15 @@ describe('profile', () => {
   })
 })
 
-describe('second factor', () => {
-  it('turns on with password, QR code, code and saved recovery codes', async () => {
-    let enabled = false
-    const api = fakeApi({
-      'POST /auth/refresh': () => json({ access_token: fakeToken() }),
-      'GET /me': () => json({ ...ME, totp_enabled: enabled, recovery_codes_left: enabled ? 2 : 0 }),
-      'POST /auth/mfa/enroll': () => json({ secret: 'ABCDEFGHIJKLMNOP', otpauth_uri: 'otpauth://totp/trem:ana?secret=ABCDEFGHIJKLMNOP' }),
-      'POST /auth/mfa/confirm': () => {
-        enabled = true
-        return json({ recovery_codes: ['aaaa-bbbb', 'cccc-dddd'] })
-      },
-    })
-    const user = userEvent.setup()
+describe('security', () => {
+  it('points to the account at authentik', async () => {
+    fakeApi({ [RENEW]: renewed, 'GET /me': () => json(ME) })
     openAt('/account/seguranca')
 
-    await user.click(await screen.findByRole('button', { name: 'Ligar' }))
-    await user.type(screen.getByLabelText('Senha', { selector: 'input' }), 'minha senha')
-    await user.click(screen.getByRole('button', { name: 'Continuar' }))
-
-    expect(await screen.findByRole('img', { name: 'QR code para o app autenticador' })).toBeInTheDocument()
-    expect(screen.getByText('ABCD EFGH IJKL MNOP')).toBeInTheDocument()
-    await user.type(screen.getByLabelText('Código do app'), '123456')
-    await user.click(screen.getByRole('button', { name: 'Confirmar' }))
-
-    const codes = await screen.findByRole('region', { name: 'Guarde estes códigos de recuperação agora' })
-    expect(within(codes).getByText('aaaa-bbbb')).toBeInTheDocument()
-    expect(within(codes).getByRole('button', { name: 'Concluir' })).toBeDisabled()
-    await user.click(within(codes).getByRole('checkbox', { name: 'Guardei em lugar seguro' }))
-    await user.click(within(codes).getByRole('button', { name: 'Concluir' }))
-
-    expect(await screen.findByText('Ligada')).toBeInTheDocument()
-    expect(api.to('POST', '/auth/mfa/enroll')[0].body).toEqual({ password: 'minha senha' })
-    expect(api.to('POST', '/auth/mfa/confirm')[0].body).toEqual({ code: '123456' })
+    expect(await screen.findByRole('link', { name: 'Abrir minha conta de login' })).toHaveAttribute(
+      'href',
+      'https://auth.example/if/user/#/settings',
+    )
   })
 })
 

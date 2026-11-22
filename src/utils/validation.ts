@@ -1,10 +1,9 @@
 import { z } from 'zod'
 
-// Mirrors trem.API's password policy (app/domain/password_policy.py): length over
-// composition, per NIST SP 800-63B. The API checks again, plus known breaches.
+// Hints of the sign-up screen: length over composition, per NIST SP 800-63B. authentik's
+// sign-up policy (trem.AUTH enrollment.yaml) checks the length again, plus known breaches.
 export const PASSWORD_MIN = 12
 export const PASSWORD_MAX = 128
-const USERNAME_PATTERN = /^[a-zA-Z0-9_.-]+$/
 
 export interface PasswordRule {
   label: string
@@ -35,65 +34,6 @@ export function passwordIssue(password: string, username = '', email = ''): stri
   if (new Set(password).size < 4) return 'A senha repete caracteres demais'
   if (containsIdentity(password, username, email)) return 'A senha não pode conter o nome de usuário ou o e-mail'
   return null
-}
-
-const email = z.string().trim().min(1, 'Informe o e-mail').pipe(z.email('E-mail inválido'))
-
-export const loginSchema = z.object({
-  username: z.string().trim().min(1, 'Informe o usuário'),
-  password: z.string().min(1, 'Informe a senha'),
-})
-
-export const totpSchema = z.object({
-  code: z.string().trim().regex(/^\d{6}$/, 'O código tem 6 dígitos'),
-})
-
-export const recoverySchema = z.object({
-  code: z.string().trim().min(6, 'Informe um código de recuperação'),
-})
-
-export const emailSchema = z.object({ email })
-
-const username = z
-  .string()
-  .trim()
-  .min(3, 'Mínimo de 3 caracteres')
-  .max(50, 'Máximo de 50 caracteres')
-  .regex(USERNAME_PATTERN, 'Use letras, números, ponto, hífen ou sublinhado')
-
-export function usernameIssue(value: string): string | null {
-  const result = username.safeParse(value)
-  return result.success ? null : (result.error.issues[0]?.message ?? 'Nome inválido')
-}
-
-export const registerSchema = z
-  .object({
-    username,
-    email,
-    password: z.string(),
-    confirm: z.string(),
-  })
-  .superRefine((data, ctx) => {
-    const issue = passwordIssue(data.password, data.username, data.email)
-    if (issue) ctx.addIssue({ code: 'custom', path: ['password'], message: issue })
-    if (data.confirm !== data.password) ctx.addIssue({ code: 'custom', path: ['confirm'], message: 'As senhas não conferem' })
-  })
-
-/** New password + confirmation; with `requireCurrent`, also the current password. */
-export function newPasswordSchema(options: { username?: string; email?: string; requireCurrent?: boolean } = {}) {
-  return z
-    .object({ current: z.string(), password: z.string(), confirm: z.string() })
-    .superRefine((data, ctx) => {
-      if (options.requireCurrent && !data.current) {
-        ctx.addIssue({ code: 'custom', path: ['current'], message: 'Informe a senha atual' })
-      }
-      const issue = passwordIssue(data.password, options.username, options.email)
-      if (issue) ctx.addIssue({ code: 'custom', path: ['password'], message: issue })
-      else if (data.current && data.password === data.current) {
-        ctx.addIssue({ code: 'custom', path: ['password'], message: 'A nova senha deve ser diferente da atual' })
-      }
-      if (data.confirm !== data.password) ctx.addIssue({ code: 'custom', path: ['confirm'], message: 'As senhas não conferem' })
-    })
 }
 
 // Mirror trem.API's hub service rules (app/domain/schemas/hub.py).

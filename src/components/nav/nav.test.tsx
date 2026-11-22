@@ -5,10 +5,10 @@ import userEvent from '@testing-library/user-event'
 import App from '@/App'
 import { env } from '@/config/env'
 import { session } from '@/services/session'
-import { CATALOG, ME, fakeApi, fakeToken, json } from '@/test/fakeApi'
+import { CATALOG, ME, RENEW, fakeApi, json, renewed, storedSession } from '@/test/fakeApi'
 
 function openAt(path: string) {
-  localStorage.setItem('trem.session', '1')
+  storedSession()
   window.history.replaceState(null, '', path)
   return render(
     <StrictMode>
@@ -18,7 +18,7 @@ function openAt(path: string) {
 }
 
 const loggedIn = (me = ME) => ({
-  'POST /auth/refresh': () => json({ access_token: fakeToken() }),
+  [RENEW]: renewed,
   'GET /me': () => json(me),
 })
 
