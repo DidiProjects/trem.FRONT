@@ -120,11 +120,124 @@ describe('trem login screen on authentik (/if/flow/:slug)', () => {
     ])
   })
 
+  it('offers the sign-up flow when authentik has one', async () => {
+    fakeAuthentik(() => ({ ...IDENTIFY, enroll_url: `/if/flow/trem-enrollment/?${QUERY}` }))
+    open()
+
+    expect(await screen.findByRole('link', { name: 'Criar conta' })).toHaveAttribute('href', `/if/flow/trem-enrollment/?${QUERY}`)
+  })
+
   it('an account without the service is told so', async () => {
     fakeAuthentik(() => ({ component: 'ak-stage-access-denied', application_pre: 'Didiflix', error_message: 'Request has been denied.' }))
     open()
 
     expect(await screen.findByRole('heading', { name: 'Sem acesso a Didiflix' })).toBeInTheDocument()
     expect(screen.getByText('Esta conta não tem acesso a este serviço.')).toBeInTheDocument()
+  })
+})
+
+describe('trem sign-up screen on authentik (/if/flow/trem-enrollment)', () => {
+  const ENROLL = 'trem-enrollment'
+  const ENROLL_EXECUTOR = `/api/v3/flows/executor/${ENROLL}/?query=${encodeURIComponent(QUERY)}`
+  const PROMPT = {
+    component: 'ak-stage-prompt',
+    flow_info: { title: 'Criar conta' },
+    fields: [
+      { field_key: 'password_repeat', label: 'Repita a senha', type: 'password', required: true, order: 3 },
+      { field_key: 'username', label: 'Usuário', type: 'username', required: true, order: 0 },
+      { field_key: 'email', label: 'E-mail', type: 'email', required: true, order: 1 },
+      { field_key: 'password', label: 'Senha', type: 'password', required: true, order: 2 },
+    ],
+  }
+  const GOOD = 'uma frase longa de verdade'
+
+  /** Executor calls by URL: GET for a challenge, POST answered by `answer`. */
+  function fakeExecutor(answer: (url: string, body: Record<string, unknown> | undefined) => unknown) {
+    const calls: { url: string; body?: Record<string, unknown> }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+        const url = String(input)
+        if (!url.startsWith('/api/v3/flows/executor/')) throw new TypeError(`unexpected fetch: ${url}`)
+        const body = typeof init.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : undefined
+        calls.push({ url, body })
+        return json(answer(url, body))
+      }),
+    )
+    return calls
+  }
+
+  function openSignUp() {
+    render(
+      <StrictMode>
+        <LoginApp slug={ENROLL} query={QUERY} />
+      </StrictMode>,
+    )
+  }
+
+  async function fill(username: string, password = GOOD, repeat = password) {
+    await userEvent.type(await screen.findByLabelText('Usuário'), username)
+    await userEvent.type(screen.getByLabelText('E-mail'), 'ana@example.com')
+    await userEvent.click(screen.getByLabelText('Senha', { selector: 'input' }))
+    await userEvent.paste(password)
+    await userEvent.click(screen.getByLabelText('Repita a senha', { selector: 'input' }))
+    await userEvent.paste(repeat)
+  }
+
+  it('sends the fields in authentik order and asks to check the e-mail', async () => {
+    const calls = fakeExecutor((_, body) => (body ? { component: 'ak-stage-email', flow_info: {} } : PROMPT))
+    openSignUp()
+
+    await fill('ana')
+    await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }))
+
+    expect(await screen.findByRole('heading', { name: 'Confira seu e-mail' })).toBeInTheDocument()
+    expect(calls.filter((c) => c.body).map((c) => c.body)).toEqual([
+      { component: 'ak-stage-prompt', username: 'ana', email: 'ana@example.com', password: GOOD, password_repeat: GOOD },
+    ])
+    expect(calls[0].url).toBe(ENROLL_EXECUTOR)
+  })
+
+  it('keeps the button off while the password is short or the repeat differs', async () => {
+    fakeExecutor(() => PROMPT)
+    openSignUp()
+
+    await fill('ana', 'curta')
+    expect(screen.getByRole('button', { name: 'Criar conta' })).toBeDisabled()
+    await userEvent.clear(screen.getByLabelText('Senha', { selector: 'input' }))
+    await userEvent.click(screen.getByLabelText('Senha', { selector: 'input' }))
+    await userEvent.paste(GOOD)
+    expect(screen.getByText('As senhas não conferem.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Criar conta' })).toBeDisabled()
+  })
+
+  it("shows authentik's refusal in Portuguese next to the field", async () => {
+    fakeExecutor((_, body) =>
+      body ? { ...PROMPT, response_errors: { username: [{ string: 'Username is already taken.' }] } } : PROMPT,
+    )
+    openSignUp()
+
+    await fill('akadmin')
+    await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }))
+
+    expect(await screen.findByText('Este nome já está em uso. Escolha outro.')).toBeInTheDocument()
+  })
+
+  it('the e-mail link confirms, follows the flow inside the executor and leaves for the app', async () => {
+    const next = `/api/v3/flows/executor/${ENROLL}/?query=next%3D%252F%26flow_token%3Dt1`
+    const calls = fakeExecutor((url, body) => {
+      if (body) return { component: 'xak-flow-redirect', to: next }
+      if (url === next) return { component: 'xak-flow-redirect', to: BACK }
+      return { component: 'ak-stage-consent', header_text: 'Continue to confirm this email address.', token: 'k1', flow_info: {} }
+    })
+    openSignUp()
+
+    expect(await screen.findByText('Confirme o seu e-mail para ativar a conta.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar e ativar a conta' }))
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith(BACK))
+    expect(leaveTo).toHaveBeenCalledTimes(1)
+    expect(calls.filter((c) => c.body).map((c) => c.body)).toEqual([{ component: 'ak-stage-consent', token: 'k1' }])
+    expect(calls.filter((c) => c.url === next)).toHaveLength(1)
   })
 })
