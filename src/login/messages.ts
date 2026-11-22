@@ -12,6 +12,12 @@ const KNOWN: [RegExp, string][] = [
   [/^password exists on/i, 'Esta senha aparece em vazamentos conhecidos. Escolha outra.'],
   [/^link was already used/i, 'Este link já foi usado. Se o e-mail já foi confirmado, é só entrar.'],
   [/^continue to confirm this email/i, 'Confirme o seu e-mail para ativar a conta.'],
+  // An admin without an authenticator app (trem.AUTH admin-mfa.yaml): authentik's own wording,
+  // in English or in its pt-BR translation.
+  [
+    /^no \(allowed\) mfa authenticator configured|^nenhum autenticador mfa \(permitido\) configurado/i,
+    'Esta conta precisa da verificação em duas etapas e ainda não tem um app autenticador cadastrado. Peça ajuda a quem administra o servidor.',
+  ],
 ]
 
 export function translate(message: string | undefined): string | undefined {

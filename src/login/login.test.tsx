@@ -127,6 +127,16 @@ describe('trem login screen on authentik (/if/flow/:slug)', () => {
     expect(await screen.findByRole('link', { name: 'Criar conta' })).toHaveAttribute('href', `/if/flow/trem-enrollment/?${QUERY}`)
   })
 
+  it.each(['No (allowed) MFA authenticator configured.', 'Nenhum autenticador MFA (permitido) configurado.'])(
+    'an admin without an authenticator app is told what is missing (%s)',
+    async (message) => {
+      fakeAuthentik(() => ({ component: 'ak-stage-access-denied', error_message: message, flow_info: {} }))
+      open()
+
+      expect(await screen.findByText(/ainda não tem um app autenticador cadastrado/)).toBeInTheDocument()
+    },
+  )
+
   it('an account without the service is told so', async () => {
     fakeAuthentik(() => ({ component: 'ak-stage-access-denied', application_pre: 'Didiflix', error_message: 'Request has been denied.' }))
     open()
