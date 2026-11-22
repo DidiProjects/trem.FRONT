@@ -95,7 +95,7 @@ Two kinds of things, kept apart in the menu, Home, Ctrl K and the admin:
 A group without its permission is not shown anywhere, and its routes explain how to ask
 for it (trem.API checks the permission again on every call). Other pages: `/servicos`,
 `/tarefas`, `/account/*` (profile, second factor, API keys, feedback),
-`/admin/usuarios`, `/admin/aplicacoes/*`, `/admin/services`.
+`/admin/aplicacoes/*`, `/admin/services`.
 
 Navigation: a sidebar (a drawer below `md`), **Ctrl K** to jump to any product, service,
 page or account action, and Home, which suggests the tools for a dropped file and lists
@@ -118,8 +118,9 @@ address, granted with the permission `hub:<service>`.
 
 ### Administration
 
-`/admin/usuarios` approves sign-ups and sets what each account may use, with the same
-split: products, services, other applications, administration. `/admin/aplicacoes` manages
+Accounts are managed in authentik (trem.AUTH), not here: sign-ups, approval, suspension and
+what each account may use (its groups `trem:*` and `hub:*`, which the token carries).
+`/admin/aplicacoes` manages
 applications, their permissions and service keys (the personal keys are in Minha conta).
 The catalog of services is `/admin/services`:
 
@@ -127,11 +128,10 @@ For accounts holding `trem:admin`, from the account menu ("Serviços do catálog
 also requires the login to have used the second factor (TOTP); without it the page says so.
 
 - Create, edit, hide, reorder and remove services. The identifier becomes the permission
-  `hub:<identifier>` and cannot change; removing a service removes the permission and every
-  grant of it.
+  `hub:<identifier>` and cannot change.
+- Who sees a service: the members of the authentik group `hub:<identifier>`. Removing a
+  service here leaves that group in authentik.
 - Logo: PNG, WebP or SVG up to 256 KB, sent to trem.API and served from there.
-- "Acesso": one switch per active account. The change does not end the account's session;
-  it shows the next time the catalog opens.
 
 The five initial services come from trem.API's migration 010 with their logos
 ([dashboard-icons](https://github.com/homarr-labs/dashboard-icons), Apache-2.0) and no

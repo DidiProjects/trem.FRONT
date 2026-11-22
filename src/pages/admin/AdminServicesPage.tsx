@@ -23,18 +23,15 @@ import ArrowDownward from '@mui/icons-material/ArrowDownward'
 import ArrowUpward from '@mui/icons-material/ArrowUpward'
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
-import GroupOutlined from '@mui/icons-material/GroupOutlined'
 import { useSnackbar } from 'notistack'
 import { ServiceLogo } from '@/components/ServiceLogo'
 import { useLoad } from '@/hooks/useLoad'
 import { hubApi, logoSrc, type ManagedService } from '@/services/hubApi'
-import { ServiceAccessDialog } from './ServiceAccessDialog'
 import { ServiceFormDialog } from './ServiceFormDialog'
 
 type Open =
   | { kind: 'none' }
   | { kind: 'form'; service?: ManagedService }
-  | { kind: 'access'; service: ManagedService }
   | { kind: 'delete'; service: ManagedService }
 
 export function AdminServicesPage() {
@@ -157,9 +154,11 @@ export function AdminServicesPage() {
                       <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600 }}>
                         {service.name}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {service.permission}
-                      </Typography>
+                      <Tooltip title="Quem está neste grupo do Authentik vê o serviço no catálogo">
+                        <Typography variant="caption" color="text.secondary">
+                          grupo {service.permission}
+                        </Typography>
+                      </Tooltip>
                       {!service.url && <Chip size="small" color="warning" label="Sem endereço" />}
                       {!service.enabled && <Chip size="small" label="Oculto" />}
                     </Stack>
@@ -199,14 +198,6 @@ export function AdminServicesPage() {
                       slotProps={{ input: { 'aria-label': `Mostrar ${service.name} no catálogo` } }}
                     />
                   </Tooltip>
-                  <Button
-                    size="small"
-                    startIcon={<GroupOutlined />}
-                    onClick={() => setOpen({ kind: 'access', service })}
-                    aria-label={`Acesso a ${service.name}`}
-                  >
-                    Acesso
-                  </Button>
                   <Tooltip title="Editar">
                     <IconButton aria-label={`Editar ${service.name}`} onClick={() => setOpen({ kind: 'form', service })}>
                       <EditOutlined fontSize="small" />
@@ -240,15 +231,14 @@ export function AdminServicesPage() {
         />
       )}
 
-      {open.kind === 'access' && <ServiceAccessDialog service={open.service} onClose={() => setOpen({ kind: 'none' })} />}
 
       {open.kind === 'delete' && (
         <Dialog open onClose={deleting ? undefined : () => setOpen({ kind: 'none' })} aria-labelledby={deleteTitleId}>
           <DialogTitle id={deleteTitleId}>Remover {open.service.name}?</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              O serviço sai do catálogo de todas as contas, e a permissão {open.service.permission} é apagada com as
-              liberações. Não dá para desfazer.
+              O serviço sai do catálogo de todas as contas. Não dá para desfazer. O grupo {open.service.permission} continua
+              no Authentik: apague lá se não for mais usado.
             </DialogContentText>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>

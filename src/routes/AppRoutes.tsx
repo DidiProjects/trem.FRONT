@@ -13,7 +13,6 @@ import { TasksPage } from '@/pages/TasksPage'
 import { VerifyEmailPage } from '@/pages/VerifyEmailPage'
 import { AdminAppsPage } from '@/pages/admin/AdminAppsPage'
 import { AdminServicesPage } from '@/pages/admin/AdminServicesPage'
-import { AdminUsersPage } from '@/pages/admin/AdminUsersPage'
 import { AnonymousOnly, RequireAdmin, RequireAuth, RequireSession } from './guards'
 import { productRoutes } from './productRoutes'
 
@@ -44,7 +43,6 @@ export function AppRoutes() {
           <Route path="/account/*" element={<AccountPage />} />
           <Route element={<RequireAdmin />}>
             <Route path="/admin/services" element={<AdminServicesPage />} />
-            <Route path="/admin/usuarios" element={<AdminUsersPage />} />
             <Route path="/admin/aplicacoes/*" element={<AdminAppsPage />} />
           </Route>
         </Route>
