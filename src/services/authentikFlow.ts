@@ -32,6 +32,8 @@ export interface Challenge {
   to?: string
   error_message?: string
   enroll_url?: string
+  recovery_url?: string
+  user_fields?: string[]
   fields?: PromptField[]
   header_text?: string
   token?: string

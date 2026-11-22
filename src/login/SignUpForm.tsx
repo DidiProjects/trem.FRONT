@@ -12,13 +12,16 @@ interface Props {
   busy: boolean
   failure: string | null
   loginHref: string
+  texts: { title: string; subtitle: string; submit: string }
+  /** Password reset: the way back is plain, there is no account to have. */
+  backToLogin?: boolean
   onSubmit: (event: FormEvent, values: Record<string, string>) => void
 }
 
 const AUTOCOMPLETE: Record<string, string> = { username: 'username', email: 'email', password: 'new-password' }
 
-/** authentik's prompt stage of the sign-up flow: the fields come from trem.AUTH's blueprint. */
-export function SignUpForm({ challenge, busy, failure, loginHref, onSubmit }: Props) {
+/** authentik's prompt stage (sign-up, new password): the fields come from trem.AUTH's blueprints. */
+export function SignUpForm({ challenge, busy, failure, loginHref, texts, backToLogin, onSubmit }: Props) {
   const fields = [...(challenge.fields ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
   const [values, setValues] = useState<Record<string, string>>({})
   const value = (key: string) => values[key] ?? ''
@@ -40,12 +43,16 @@ export function SignUpForm({ challenge, busy, failure, loginHref, onSubmit }: Pr
 
   return (
     <AuthLayout
-      title={challenge.flow_info?.title || 'Criar conta'}
-      subtitle="Depois de confirmar o e-mail, o administrador libera os serviços da sua conta."
+      title={texts.title}
+      subtitle={texts.subtitle}
       footer={
-        <>
-          Já tem conta? <Link href={loginHref}>Entrar</Link>
-        </>
+        backToLogin ? (
+          <Link href={loginHref}>Voltar para o login</Link>
+        ) : (
+          <>
+            Já tem conta? <Link href={loginHref}>Entrar</Link>
+          </>
+        )
       }
     >
       <Stack component="form" spacing={2.5} noValidate onSubmit={submit}>
@@ -81,7 +88,7 @@ export function SignUpForm({ challenge, busy, failure, loginHref, onSubmit }: Pr
           )
         })}
         <Button type="submit" variant="contained" size="large" loading={busy} disabled={!filled || !passwordOk || !repeatOk}>
-          Criar conta
+          {texts.submit}
         </Button>
       </Stack>
     </AuthLayout>

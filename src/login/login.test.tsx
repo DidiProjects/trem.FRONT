@@ -241,3 +241,88 @@ describe('trem sign-up screen on authentik (/if/flow/trem-enrollment)', () => {
     expect(calls.filter((c) => c.url === next)).toHaveLength(1)
   })
 })
+
+describe('trem password reset screen on authentik (/if/flow/trem-recovery)', () => {
+  const RECOVERY = 'trem-recovery'
+
+  function fakeExecutor(answer: (url: string, body: Record<string, unknown> | undefined) => unknown) {
+    const calls: { url: string; body?: Record<string, unknown> }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+        const url = String(input)
+        const body = typeof init.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : undefined
+        calls.push({ url, body })
+        return json(answer(url, body))
+      }),
+    )
+    return calls
+  }
+
+  function openReset() {
+    render(
+      <StrictMode>
+        <LoginApp slug={RECOVERY} query={QUERY} />
+      </StrictMode>,
+    )
+  }
+
+  it('the login offers "Esqueci a senha"', async () => {
+    fakeAuthentik(() => ({ ...IDENTIFY, recovery_url: `/if/flow/${RECOVERY}/?${QUERY}` }))
+    open()
+
+    expect(await screen.findByRole('link', { name: 'Esqueci a senha' })).toHaveAttribute('href', `/if/flow/${RECOVERY}/?${QUERY}`)
+  })
+
+  it('asks for the user or e-mail only and says a link may have been sent', async () => {
+    const calls = fakeExecutor((_, body) =>
+      body
+        ? { component: 'ak-stage-email', flow_info: {} }
+        : { component: 'ak-stage-identification', user_fields: ['username', 'email'], password_fields: false, flow_info: {} },
+    )
+    openReset()
+
+    expect(await screen.findByRole('heading', { name: 'Redefinir senha' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Senha')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Manter conectado')).not.toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Usuário ou e-mail'), 'ana@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Enviar link' }))
+
+    expect(await screen.findByText(/Se existir uma conta com esse usuário ou e-mail/)).toBeInTheDocument()
+    expect(calls.filter((c) => c.body).map((c) => c.body)).toEqual([{ component: 'ak-stage-identification', uid_field: 'ana@example.com' }])
+  })
+
+  it('the e-mail link takes the new password, says it changed and only then leaves for the login', async () => {
+    const PROMPT = {
+      component: 'ak-stage-prompt',
+      flow_info: { title: 'Redefinir senha' },
+      fields: [
+        { field_key: 'password', label: 'Senha nova', type: 'password', required: true, order: 0 },
+        { field_key: 'password_repeat', label: 'Repita a senha nova', type: 'password', required: true, order: 1 },
+      ],
+    }
+    const calls = fakeExecutor((_, body) => {
+      if (!body) return { component: 'ak-stage-consent', token: 'k1', flow_info: {} }
+      if (body.component === 'ak-stage-consent') return PROMPT
+      return { component: 'xak-flow-redirect', to: BACK }
+    })
+    openReset()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Continuar' }))
+    await userEvent.click(await screen.findByLabelText('Senha nova', { selector: 'input' }))
+    await userEvent.paste('uma frase longa de verdade')
+    await userEvent.click(screen.getByLabelText('Repita a senha nova', { selector: 'input' }))
+    await userEvent.paste('uma frase longa de verdade')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar senha' }))
+
+    expect(await screen.findByRole('heading', { name: 'Senha alterada' })).toBeInTheDocument()
+    expect(leaveTo).not.toHaveBeenCalled()
+    expect(calls.at(-1)?.body).toEqual({
+      component: 'ak-stage-prompt',
+      password: 'uma frase longa de verdade',
+      password_repeat: 'uma frase longa de verdade',
+    })
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+    expect(leaveTo).toHaveBeenCalledWith(BACK)
+  })
+})
