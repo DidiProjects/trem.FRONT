@@ -5,6 +5,7 @@ import { FullPageSpinner } from '@/components/FullPageStatus'
 import { PasswordField } from '@/components/PasswordField'
 import { authentikFlow, FLOW_ERROR, isExecutorUrl, type Challenge } from '@/services/authentikFlow'
 import { leaveTo } from '@/utils/leave'
+import { FLOW_TEXTS, flowKind } from './flowTexts'
 import { translate } from './messages'
 import { SignUpForm } from './SignUpForm'
 
@@ -62,6 +63,12 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
   // authentik asks "stay signed in?" as its own step after the password and the code; the
   // answer was already given with the checkbox next to the password.
   const askedToRemember = challenge?.component === 'ak-stage-user-login'
+  const kind = flowKind(slug)
+  const texts = FLOW_TEXTS[kind]
+  // A new password opens no session (trem.AUTH recovery.yaml): say it worked, then log in.
+  const passwordChanged =
+    kind === 'recovery' && challenge?.component === 'xak-flow-redirect' && challenge.to && !isExecutorUrl(challenge.to)
+
   useEffect(() => {
     if (!challenge || handled.current === challenge) return
     if (challenge.component === 'xak-flow-redirect' && challenge.to) {
@@ -72,7 +79,7 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
           .follow(challenge.to)
           .then(setChallenge)
           .catch(() => setFailure(FLOW_ERROR))
-      } else leaveTo(challenge.to)
+      } else if (kind !== 'recovery') leaveTo(challenge.to)
     } else if (askedToRemember) {
       handled.current = challenge
       authentikFlow
@@ -82,6 +89,16 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per challenge
   }, [challenge])
+
+  if (passwordChanged) {
+    return (
+      <AuthLayout title="Senha alterada" subtitle="Entre com a senha nova.">
+        <Button variant="contained" size="large" onClick={() => leaveTo(challenge.to!)}>
+          Entrar
+        </Button>
+      </AuthLayout>
+    )
+  }
 
   if (!challenge || challenge.component === 'xak-flow-redirect' || askedToRemember) {
     return failure ? (
@@ -117,13 +134,19 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
     const error = firstError(challenge, 'non_field_errors', 'password')
     return (
       <AuthLayout
-        title="Entrar"
-        subtitle={subtitle}
+        title={texts.identify.title}
+        subtitle={texts.identify.subtitle ?? subtitle}
         footer={
-          challenge.enroll_url && (
+          kind === 'recovery' ? (
             <>
-              Não tem conta? <Link href={challenge.enroll_url}>Criar conta</Link>
+              Lembrou a senha? <Link href={loginHref}>Entrar</Link>
             </>
+          ) : (
+            challenge.enroll_url && (
+              <>
+                Não tem conta? <Link href={challenge.enroll_url}>Criar conta</Link>
+              </>
+            )
           )
         }
       >
@@ -135,7 +158,7 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
         >
           {(failure || error) && <Alert severity="error">{failure ?? error}</Alert>}
           <TextField
-            label="Usuário"
+            label={challenge.user_fields?.includes('email') ? 'Usuário ou e-mail' : 'Usuário'}
             autoComplete="username"
             autoFocus
             value={username}
@@ -152,9 +175,14 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
               onChange={(e) => setPassword(e.target.value)}
             />
           )}
-          {rememberBox}
+          {challenge.password_fields && challenge.recovery_url && (
+            <Link href={challenge.recovery_url} variant="body2" sx={{ alignSelf: 'flex-end', mt: -1 }}>
+              Esqueci a senha
+            </Link>
+          )}
+          {challenge.password_fields && rememberBox}
           <Button type="submit" variant="contained" size="large" loading={busy} disabled={!username.trim()}>
-            Entrar
+            {texts.identify.submit}
           </Button>
         </Stack>
       </AuthLayout>
@@ -232,6 +260,8 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
         busy={busy}
         failure={failure}
         loginHref={loginHref}
+        texts={texts.form}
+        backToLogin={kind === 'recovery'}
         onSubmit={(e, values) => send(e, values)}
       />
     )
@@ -241,9 +271,9 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
     return (
       <AuthLayout title="Confira seu e-mail">
         <Stack spacing={2}>
-          <Typography>Enviamos um link de confirmação para o seu e-mail. Ele vale por 24 horas.</Typography>
+          <Typography>{texts.emailSent[0]}</Typography>
           <Typography variant="body2" color="text.secondary">
-            Não chegou? Confira a caixa de spam. Depois da confirmação, o administrador libera os serviços da sua conta.
+            {texts.emailSent[1]}
           </Typography>
         </Stack>
       </AuthLayout>
@@ -252,11 +282,11 @@ export function LoginApp({ slug, query }: { slug: string; query: string }) {
 
   if (challenge.component === 'ak-stage-consent') {
     return (
-      <AuthLayout title="Confirmar e-mail" subtitle={translate(challenge.header_text)}>
+      <AuthLayout title={texts.link.title} subtitle={texts.link.subtitle || translate(challenge.header_text)}>
         <Stack component="form" spacing={2.5} noValidate onSubmit={(e) => send(e, { token: challenge.token })}>
           {failure && <Alert severity="error">{failure}</Alert>}
           <Button type="submit" variant="contained" size="large" loading={busy}>
-            Confirmar e ativar a conta
+            {texts.link.submit}
           </Button>
         </Stack>
       </AuthLayout>
