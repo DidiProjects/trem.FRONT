@@ -69,23 +69,17 @@ describe('LinkedIn', () => {
     // Pasted, not typed: the whole form re-renders per key, about 0.2 s each in jsdom.
     await user.click(within(dialog).getByLabelText(/Nome da busca/))
     await user.paste('Remoto EU')
-    await user.click(within(dialog).getByLabelText('Termos de vagas: grupo 1, termo 1'))
+    await user.click(within(dialog).getByLabelText('Termos de vagas'))
     await user.paste('react')
-    await user.click(within(dialog).getByRole('button', { name: 'Termos de vagas: adicionar alternativa (OR) ao grupo 1' }))
-    await user.click(within(dialog).getByLabelText('Termos de vagas: grupo 1, termo 2'))
+    await user.keyboard('{Enter}')
     await user.paste('typescript')
-    await user.click(within(dialog).getByRole('button', { name: 'Termos de vagas: adicionar grupo (AND)' }))
-    await user.click(within(dialog).getByLabelText('Termos de vagas: grupo 2, termo 1'))
-    await user.paste('remote work')
-    expect(within(dialog).getByText('(react OR typescript) AND "remote work"')).toBeInTheDocument()
     await user.click(within(dialog).getByRole('checkbox', { name: 'Sáb' }))
     await user.click(within(dialog).getByRole('button', { name: 'Criar busca' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     const body = api.to('POST', '/scrapers/linkedin/jobs')[0].body as unknown as JobConfig
     expect(body.name).toBe('Remoto EU')
-    expect(body.jobs.keywords).toEqual(['(react OR typescript) AND "remote work"'])
-    expect(body.posts.keywords).toEqual([])
+    expect(body.jobs.keywords).toEqual(['react', 'typescript'])
     expect(body.schedule.days).toEqual(['mon', 'tue', 'wed', 'thu', 'fri', 'sat'])
     expect(body.notify_to).toBe('ana@example.com')
     expect(body.analysis).toEqual({ criteria: '', min_score: 70, max_items: 30, effort: 'low' })
@@ -128,5 +122,25 @@ describe('LinkedIn', () => {
     expect(open).toHaveBeenCalledWith('about:blank', '_blank')
     await waitFor(() => expect(tab.location.href).toBe(`${env.apiUrl}/scrapers/linkedin/login/${login}/start?token=t`))
     open.mockRestore()
+  })
+})
+
+describe('LinkedIn post terms', () => {
+  it('says when a post line has more terms than LinkedIn reads', async () => {
+    fakeApi(base)
+    const user = userEvent.setup()
+    openAt('/automacoes/linkedin')
+
+    await user.click(await screen.findByRole('button', { name: 'Nova busca' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nova busca' })
+    await user.click(within(dialog).getByLabelText(/Nome da busca/))
+    await user.paste('Posts')
+    await user.click(within(dialog).getByLabelText('Termos de posts'))
+    await user.paste('a OR b OR c OR d OR e OR "f g h" OR i')
+
+    expect(within(dialog).getByText('Cada linha de posts lê no máximo 6 termos no LinkedIn.')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Criar busca' })).toBeDisabled()
+    await user.keyboard('{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}')
+    expect(within(dialog).queryByText('Cada linha de posts lê no máximo 6 termos no LinkedIn.')).not.toBeInTheDocument()
   })
 })
