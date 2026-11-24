@@ -1,13 +1,17 @@
-name: Deploy to Netlify
+name: Deploy to Home Server
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  deploy:
-    name: Test, build and deploy
+  test:
+    name: Lint and tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,20 +25,92 @@ jobs:
       - run: npm run lint
       - run: npm run test:run
 
-      - name: Build
-        env:
-          VITE_API_URL: ${{ vars.TREM_API_URL }}
-          # authentik's trem provider: the only login.
-          VITE_OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}
-        run: |
-          [[ "$VITE_API_URL" == https://* ]] || { echo "Repository variable TREM_API_URL must be trem.API's https origin"; exit 1; }
-          [[ "$VITE_OIDC_ISSUER" == https://* ]] || { echo "Repository variable OIDC_ISSUER must be authentik's trem issuer"; exit 1; }
-          npm run build
+  deploy:
+    name: Build image and deploy
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Deploy
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        # --no-build: netlify-cli builds by default, again and without the VITE_* variables,
-        # overwriting the dist/ built and tested above (the site shipped localhost:3002).
-        run: npx --yes netlify-cli deploy --dir=./dist --prod --no-build
+      - name: Set lowercase image name
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The image carries production's trem.API and authentik addresses (VITE_* are build
+      # time); the Dockerfile refuses anything that is not https.
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          build-args: |
+            VITE_API_URL=${{ vars.TREM_API_URL }}
+            VITE_OIDC_ISSUER=${{ vars.OIDC_ISSUER }}
+          tags: |
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ steps.image.outputs.name }}:buildcache
+          cache-to: type=registry,ref=${{ steps.image.outputs.name }}:buildcache,mode=max
+
+      - name: Setup Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
+          tags: tag:github-actions
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy trem-front
+        run: |
+          ssh -o StrictHostKeyChecking=no -p 1024 diego@${{ vars.TAILSCALE_IP }} << EOF
+          set -e
+          IMAGE="${{ steps.image.outputs.name }}:${{ github.sha }}"
+
+          # The job token expires with the job: log in under a throwaway config so it is
+          # not left in root's docker config (where it would break later anonymous pulls).
+          PULL_CONFIG=\$(mktemp -d)
+          echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker --config "\${PULL_CONFIG}" login ghcr.io -u ${{ github.actor }} --password-stdin
+          sudo docker --config "\${PULL_CONFIG}" pull "\${IMAGE}"
+          sudo rm -rf "\${PULL_CONFIG}"
+
+          sudo docker stop trem-front || true
+          sudo docker rm trem-front || true
+
+          # Only reachable from the host: cloudflared publishes it as web.didilv93.com.
+          sudo docker run -d --name trem-front \
+            --label app=trem-front \
+            --label project=trem \
+            --restart=unless-stopped \
+            -p 127.0.0.1:13004:8080 \
+            --read-only \
+            --tmpfs /tmp \
+            --cap-drop=ALL \
+            --security-opt no-new-privileges:true \
+            "\${IMAGE}"
+
+          for i in \$(seq 1 12); do
+            STATUS=\$(sudo docker inspect trem-front --format='{{.State.Health.Status}}')
+            [ "\${STATUS}" = "healthy" ] && { echo "trem-front is healthy"; break; }
+            if [ \$i -eq 12 ]; then
+              echo "trem-front did not become healthy (status: \${STATUS})"
+              sudo docker logs --tail 30 trem-front
+              exit 1
+            fi
+            sleep 5
+          done
+          curl -fsS -o /dev/null http://127.0.0.1:13004/ && echo "index served on 127.0.0.1:13004"
+
+          # Older trem.front images; the running one is in use and stays.
+          sudo docker image prune -a -f --filter "label=app=trem-front" >/dev/null || true
+          EOF
