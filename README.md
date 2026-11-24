@@ -115,11 +115,21 @@ The five initial services come from trem.API's migration 010 with their logos
 ([dashboard-icons](https://github.com/homarr-labs/dashboard-icons), Apache-2.0) and no
 address: fill it in the admin area for each to appear.
 
-## Deploy (Netlify)
+## Deploy (home server)
 
-`.github/workflows/deploy.yml` runs on every push to `main`: lint, tests, build (with
-`VITE_API_URL` from `TREM_API_URL`), deploy. `netlify.toml` only serves `index.html` for the
-client-side routes; the API is not proxied.
+`.github/workflows/deploy.yml` runs on every push to `main`: lint and tests, then a Docker
+image (`Dockerfile`: Vite build, served by unprivileged nginx on 8080 per `nginx.conf`) is
+pushed to `ghcr.io/didiprojects/trem.front` and started on the server as `trem-front`,
+read-only and bound to `127.0.0.1:13004`. The Cloudflare Tunnel publishes it as
+`https://web.didilv93.com`. `VITE_*` are build-time values, so the image only works for
+production; the Dockerfile refuses addresses that are not https.
+
+nginx serves `index.html` for the client-side routes (revalidated on each visit, so a deploy
+reaches open tabs on the next navigation) and caches `/assets/` for a year (hashed names).
+The API is not proxied.
+
+The app installs as a web app (`public/manifest.webmanifest`, icons in `public/`). There is
+no service worker on purpose: nothing works offline, and a cached shell would outlive deploys.
 
 Repository configuration:
 
@@ -127,8 +137,9 @@ Repository configuration:
 |---|---|---|
 | variable | `TREM_API_URL` | trem.API's origin, `https://api.didilv93.com` |
 | variable | `OIDC_ISSUER` | required: authentik's `trem` provider, `https://auth.didilv93.com/application/o/trem/` |
-| secret | `NETLIFY_AUTH_TOKEN` | Netlify personal access token |
-| secret | `NETLIFY_SITE_ID` | the site's ID |
+| variable | `TAILSCALE_IP` | the server's Tailscale address (same as trem.API) |
+| secret | `TAILSCALE_CLIENT_SECRET` | Tailscale auth key for the runner (same as trem.API) |
+| secret | `SSH_PRIVATE_KEY` | SSH key for the server (same as trem.API) |
 
-In trem.API: `FRONTEND_URL` = this site's URL, so the e-mail links open here, and this
-site's origin in `CORS_ORIGINS`.
+In trem.API: this site's origin in `CORS_ORIGINS`. In trem.AUTH: the `trem` provider's redirect URIs and the
+post-login redirect point at this site.
