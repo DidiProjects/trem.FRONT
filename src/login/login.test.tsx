@@ -208,17 +208,58 @@ describe('trem sign-up screen on authentik (/if/flow/trem-enrollment)', () => {
     expect(calls[0].url).toBe(ENROLL_EXECUTOR)
   })
 
-  it('keeps the button off while the password is short or the repeat differs', async () => {
-    fakeExecutor(() => PROMPT)
+  it('sends nothing while a field is wrong, and says what is wrong under each field', async () => {
+    const calls = fakeExecutor(() => PROMPT)
     openSignUp()
 
     await fill('ana', 'curta')
-    expect(screen.getByRole('button', { name: 'Criar conta' })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }))
+    expect(screen.getByText('A senha deve ter no mínimo 12 caracteres.')).toBeInTheDocument()
     await userEvent.clear(screen.getByLabelText('Senha', { selector: 'input' }))
     await userEvent.click(screen.getByLabelText('Senha', { selector: 'input' }))
     await userEvent.paste(GOOD)
     expect(screen.getByText('As senhas não conferem.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Criar conta' })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }))
+    expect(calls.filter((c) => c.body)).toEqual([])
+  })
+
+  it('says an e-mail is not a username as soon as the field is left', async () => {
+    fakeExecutor(() => PROMPT)
+    openSignUp()
+
+    await userEvent.type(await screen.findByLabelText('Usuário'), 'ana@example.com')
+    await userEvent.click(screen.getByLabelText('E-mail'))
+
+    expect(await screen.findByText(/não pode ser um e-mail/)).toBeInTheDocument()
+  })
+
+  it("shows every one of authentik's refusals, each under its own field", async () => {
+    // authentik answers its validation policies as non_field_errors only, all at once.
+    fakeExecutor((_, body) =>
+      body
+        ? {
+            ...PROMPT,
+            response_errors: {
+              non_field_errors: [
+                { string: 'Password exists on 129 online lists.', code: 'invalid' },
+                { string: 'Este e-mail já tem conta. Entre com ele ou recupere a senha.', code: 'invalid' },
+              ],
+            },
+          }
+        : PROMPT,
+    )
+    openSignUp()
+
+    await fill('ana')
+    await userEvent.click(screen.getByRole('button', { name: 'Criar conta' }))
+
+    const password = await screen.findByText('Esta senha aparece em vazamentos conhecidos. Escolha outra.')
+    const email = screen.getByText('Este e-mail já tem conta. Entre com ele ou recupere a senha.')
+    expect(password.closest('.MuiFormControl-root')).toBe(
+      screen.getByLabelText('Senha', { selector: 'input' }).closest('.MuiFormControl-root'),
+    )
+    expect(email.closest('.MuiFormControl-root')).toBe(screen.getByLabelText('E-mail').closest('.MuiFormControl-root'))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it("shows authentik's refusal in Portuguese next to the field", async () => {
