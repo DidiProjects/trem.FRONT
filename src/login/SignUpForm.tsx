@@ -4,8 +4,7 @@ import { AuthLayout } from '@/components/AuthLayout'
 import { PasswordChecklist } from '@/components/PasswordChecklist'
 import { PasswordField } from '@/components/PasswordField'
 import type { Challenge } from '@/services/authentikFlow'
-import { passwordIssue } from '@/utils/validation'
-import { translate } from './messages'
+import { serverErrors, validateFields } from './signUpSchema'
 
 interface Props {
   challenge: Challenge
@@ -20,21 +19,41 @@ interface Props {
 
 const AUTOCOMPLETE: Record<string, string> = { username: 'username', email: 'email', password: 'new-password' }
 
+/** One message per line under the field. */
+function lines(messages: string[] | undefined) {
+  if (!messages?.length) return undefined
+  return messages.length === 1 ? messages[0] : messages.map((m) => <span key={m} style={{ display: 'block' }}>{m}</span>)
+}
+
 /** authentik's prompt stage (sign-up, new password): the fields come from trem.AUTH's blueprints. */
 export function SignUpForm({ challenge, busy, failure, loginHref, texts, backToLogin, onSubmit }: Props) {
   const fields = [...(challenge.fields ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  const keys = fields.map((f) => f.field_key)
   const [values, setValues] = useState<Record<string, string>>({})
+  // A field says what is wrong with it once the person left it (or tried to send).
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  // authentik's answer is about the values that were sent: a field edited since then drops it.
+  const [answered, setAnswered] = useState<{ challenge: Challenge; edited: Set<string> }>({ challenge, edited: new Set() })
+  const edited = answered.challenge === challenge ? answered.edited : new Set<string>()
   const value = (key: string) => values[key] ?? ''
-  const fieldError = (key: string) => translate(challenge.response_errors?.[key]?.[0]?.string)
-  const formError = failure ?? fieldError('non_field_errors')
 
-  // Hints before the round trip; authentik checks again (length, known breaches).
-  const hasPassword = fields.some((f) => f.field_key === 'password')
-  const passwordOk = !hasPassword || passwordIssue(value('password'), value('username'), value('email')) === null
-  const repeatOk = !fields.some((f) => f.field_key === 'password_repeat') || value('password_repeat') === value('password')
-  const filled = fields.every((f) => !f.required || value(f.field_key).trim())
+  const local = validateFields(values, keys)
+  const server = serverErrors(challenge, keys)
+  const errorsOf = (key: string) =>
+    touched[key] && local[key] ? local[key] : edited.has(key) ? undefined : server.fields[key]
+  const formErrors = failure ? [failure] : server.form
+
+  const change = (key: string, next: string) => {
+    setValues((v) => ({ ...v, [key]: next }))
+    setAnswered({ challenge, edited: new Set(edited).add(key) })
+  }
 
   const submit = (event: FormEvent) => {
+    if (Object.keys(local).length > 0) {
+      event.preventDefault()
+      setTouched(Object.fromEntries(keys.map((k) => [k, true])))
+      return
+    }
     const trimmed = Object.fromEntries(
       Object.entries(values).map(([key, v]) => [key, key.startsWith('password') ? v : v.trim()]),
     )
@@ -56,16 +75,22 @@ export function SignUpForm({ challenge, busy, failure, loginHref, texts, backToL
       }
     >
       <Stack component="form" spacing={2.5} noValidate onSubmit={submit}>
-        {formError && <Alert severity="error">{formError}</Alert>}
+        {formErrors.map((message) => (
+          <Alert key={message} severity="error">
+            {message}
+          </Alert>
+        ))}
         {fields.map((field, index) => {
           const key = field.field_key
+          const errors = errorsOf(key)
           const common = {
             label: field.label,
             value: value(key),
             autoFocus: index === 0,
-            error: Boolean(fieldError(key)) || (key === 'password_repeat' && Boolean(value(key)) && !repeatOk),
-            helperText: fieldError(key) ?? (key === 'password_repeat' && value(key) && !repeatOk ? 'As senhas não conferem.' : undefined),
-            onChange: (e: { target: { value: string } }) => setValues((v) => ({ ...v, [key]: e.target.value })),
+            error: Boolean(errors?.length),
+            helperText: lines(errors),
+            onChange: (e: { target: { value: string } }) => change(key, e.target.value),
+            onBlur: () => setTouched((t) => (value(key) ? { ...t, [key]: true } : t)),
           }
           if (field.type === 'password') {
             return (
@@ -87,7 +112,7 @@ export function SignUpForm({ challenge, busy, failure, loginHref, texts, backToL
             />
           )
         })}
-        <Button type="submit" variant="contained" size="large" loading={busy} disabled={!filled || !passwordOk || !repeatOk}>
+        <Button type="submit" variant="contained" size="large" loading={busy}>
           {texts.submit}
         </Button>
       </Stack>
